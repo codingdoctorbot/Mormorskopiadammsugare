@@ -1,10 +1,12 @@
 # 🔁 HANDOFF – Mormorskopiadammsugare
 
-> **Read this first** (developers and AI coding agents alike). Then `docs/ARCHITECTURE.md` (the spec),
-> `docs/TASKS.md` (the checklist) and the latest entry in `docs/SESSIONS.md` (what happened last time).
+> **Read this first** (developers and AI coding agents alike). Then **`docs/NEXT_SESSION.md`** (the agenda
+> for the next session), `docs/ARCHITECTURE.md` (the spec), `docs/TASKS.md` (the checklist) and the latest
+> entry in `docs/SESSIONS.md` (what happened last time).
 >
 > **At the end of every work session:** update this file's *Current status*, tick `docs/TASKS.md`,
-> add an entry to `docs/SESSIONS.md`, and add user-visible changes to `CHANGELOG.md` (*Unreleased*).
+> add an entry to `docs/SESSIONS.md`, rewrite `docs/NEXT_SESSION.md`, and add user-visible changes to
+> `CHANGELOG.md` (*Unreleased*).
 >
 > Code and project names are `PhotoSorter.*` (the working title); the product is called
 > Mormorskopiadammsugare ("grandma's copy vacuum cleaner").
@@ -48,11 +50,19 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 - ✅ 151 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
   layout switching, and a guard against double-encoded source files.
-- ⏳ **Release v0.1.0 not tagged yet.** GitHub Actions had an outage (hosted runners not assigned – builds
-  failed with "job was not acquired by Runner"). **Next step: when a `build` run on `main` is green, run
-  `git tag v0.1.0 && git push origin v0.1.0`**, wait for `release.yml`, then verify the published exe with
-  `gh attestation verify` (see README) and compare SHA256SUMS.
-- ⏳ First real-world run (on the owner's own backups) in progress – feedback may change priorities.
+- ⏳ **Release v0.1.0 not tagged yet** – blocked by a GitHub Actions outage on 2026-10-05 (hosted runners
+  not assigned; every build since the public repo was created failed with "job was not acquired by Runner",
+  incl. two re-runs). Code is not the cause: all tests pass locally. Steps: `docs/NEXT_SESSION.md` → 1.
+- ✅ **First real-world run** (owner's own backups, aggregate numbers only): ~100 GB / 52,078 unique
+  photos+videos copied in under 8 min, 9,459 duplicates skipped, 46,874 files organized in 44 s,
+  **0 errors** in both logs. Findings → `docs/NEXT_SESSION.md` → 2–3:
+  - 5,204 "suspect" files (copied because *Copy suspect files* was on) were almost all app/game resources
+    (`lib`/`res`/`data` folders); 43 of them are `.mov`/`.mp4` worth a header check.
+  - 57,443 files under 10 KB skipped – mostly icons and app resources (incl. 1,914 tiny `.3gp`/`.mov`
+    bundled with software); ~50 tiny JPEGs sat in camera-like folders.
+  - 100 % of files got a year with spikes in a few years and 12 files in 1980 → the *file modified date*
+    option was most likely on (unconfirmed).
+  - ~90 % had no GPS → `_Unknown location` – expected; motivates folder-name location guessing.
 - ✅ Verified on a generated 10 GB "backups of backups" pile built from Wikimedia Commons
   *featured pictures* (5,974 files: hard-linked backup copies, renamed/extension-less/recovered files,
   595-character paths, junk, caches, fake `.jpg`s): result matched an independent answer key exactly
@@ -63,7 +73,11 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 - ⚠️ Known gaps: video metadata only from MOV/MP4/3GP (QuickTime) and AVI – MTS/MKV/WMV/MPG rely on
   file/folder names; XMP dates not read; `Extracted\` stays (empty) after organizing; exact
   duplicates only (resized/re-compressed copies are kept).
-- ⏭️ Next: see `docs/TASKS.md` → "Next".
+- ⏭️ Next: **`docs/NEXT_SESSION.md`** (agenda), `docs/TASKS.md` → "Next" (backlog).
+- 🧪 A regression test set (10 GB Wikimedia pile + scripts `garble.py`/`verify.py`, real camera samples) was
+  built in a temporary folder on the development machine; it may not survive. To rebuild it, see
+  `docs/SESSIONS.md` session 5 (Commons *featured pictures* of clean subjects, hard-linked backup copies,
+  independent answer key).
 
 ### Testing policy
 - **Never use anyone's personal photos as test data**, and never commit test media. Use generated files
@@ -115,6 +129,7 @@ tools/IconGen/IconGen.cs   – draws the app icon (dotnet run tools/IconGen/Icon
 docs/ARCHITECTURE.md       – full spec, diagrams, signature table, DB schema
 docs/TASKS.md              – phased checklist
 docs/SESSIONS.md           – session log: what each work session did, decided and learned
+docs/NEXT_SESSION.md       – agenda for the next session (rewritten every session)
 docs/MANUAL.md, MANUAL.sv.md – user manual (English / Swedish)
 CHANGELOG.md               – user-visible changes per version
 docs/releases/             – release notes per tag

@@ -55,6 +55,13 @@ App (`src/PhotoSorter.App`):
 - [ ] XMP dates (`photoshop:DateCreated`, `xmp:CreateDate`) – not read yet (ARCHITECTURE §5.2 step 2)
 - [x] Best name among copies when organizing (`Nokia 6.1.mp4` beats `FILE0043.mp4`, `(1)`/`- Copy`/`kopia` lose) – `NameResolver.PreferredBaseName`
 - [ ] Progress by bytes rather than file count (big videos make the bar uneven)
+- [x] First real-world run (owner's backups, ~100 GB): 0 errors; findings in HANDOFF
+- [ ] **Release v0.1.0** – tag once GitHub Actions builds again (NEXT_SESSION.md → 1)
+- [ ] **Check all copies** – re-hash the destination against the catalog (before deleting originals)
+- [ ] Suspect `.mov`/`.mp4` from the real run – inspect headers (needs the owner's OK)
+- [ ] Skip images by pixel size instead of KB (keeps 160×120 early phone photos)
+- [ ] Option: skip installed-software/game folders (`lib`, `res`, game libraries)
+- [ ] Preview shows where the years came from (metadata / file name / folder name / file date)
 
 ## Layout options  ✅ (v0.1.0)
 - [x] Optional country level `Continent\Country\Year` (friendly names, overseas territories named separately)
@@ -63,5 +70,5 @@ App (`src/PhotoSorter.App`):
 
 ## Phase 4 – Polish (optional)
 - [ ] Thumbnail preview, duplicate review screen, pause/resume button
-- [ ] Guess location from folder names (`Thailand 2012`) for photos without GPS
+- [ ] **Guess location from folder names** (`Thailand 2012`, `Skåne`) for photos without GPS – ~90 % of the real run had no GPS
 - [ ] ZIP scanning

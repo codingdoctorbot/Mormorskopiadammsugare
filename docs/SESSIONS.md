@@ -6,6 +6,28 @@ the history behind it. Keep entries short and free of personal details.
 
 ---
 
+## 2026-10-05 · Session 7 – First real-world run, docs
+
+**Done**
+- The owner ran the app on part of their own backups and shared **only the CSV logs** (photos and folders
+  were not looked at). Analysed them in aggregate: ~100 GB / 52,078 unique files copied in under 8 min,
+  9,459 duplicates, 46,874 files organized in 44 s, **0 errors**. Details in HANDOFF *Current status*.
+- Docs: session log, CHANGELOG, user manual (EN + SV, also as a desktop `.txt`), NEXT_SESSION agenda.
+- Release still blocked: GitHub Actions outage all evening; re-runs cancelled without a runner.
+
+**Decisions**
+- Keep *Copy suspect files* and *Verify copies* off by default: the real run showed suspects are almost all
+  software resources (still listed in the log), and verify mainly matters before deleting originals.
+- Files under 10 KB stay skipped by default; the log lists them, and a later run with a lower limit into the
+  same destination adds only those (skipped files aren't recorded as done).
+
+**Lessons**
+- Logs alone answer most "did it work" questions – the CSV is enough for counts, errors, formats and
+  folder-type patterns without touching anyone's photos.
+- A year histogram with 0 unknowns and spikes is a red flag for the *file modified date* option.
+- Junk concentrates in software folders (`lib`, `res`, `data`, game libraries): both the "suspect" files and
+  the tiny `.3gp`/`.mov` came from there.
+
 ## 2026-10-05 · Session 6 – Layout options, icon, readability
 
 **Done**

@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="" width="96" align="right">
+
 # Mormorskopiadammsugare
 
 *Grandma's copy vacuum cleaner.* &nbsp;🇸🇪 *mormor* = grandma · *kopia* = copy · *dammsugare* = vacuum cleaner

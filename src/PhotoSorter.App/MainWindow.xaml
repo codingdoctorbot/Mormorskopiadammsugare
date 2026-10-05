@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="Mormorskopiadammsugare" Width="940" Height="820" MinWidth="680" MinHeight="600"
+        Icon="/Assets/app.ico"
         WindowStartupLocation="CenterScreen">
 
     <DockPanel Margin="20,12,20,16">
@@ -19,7 +20,10 @@
         <TabControl SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- ============================ 1  EXTRACT ============================ -->
-            <TabItem Header="1   Extract">
+            <TabItem AutomationProperties.Name="1   Extract">
+                <TabItem.Header>
+                    <TextBlock Text="1   Extract" Style="{StaticResource TabHeader}" />
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="4,4,8,8">
 
@@ -98,8 +102,29 @@
 
                         <ProgressBar Height="8" Margin="0,16,0,0" Value="{Binding ExtractPercent}" IsIndeterminate="{Binding ExtractIndeterminate}" />
                         <TextBlock Text="{Binding ExtractStatus}" TextWrapping="Wrap" Margin="0,10,0,0" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FoundLine}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                        <TextBlock Text="{Binding CopiedLine}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <ItemsControl ItemsSource="{Binding Stats}" Margin="0,12,0,0" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource StatTileBorder}">
+                                        <StackPanel>
+                                            <TextBlock x:Name="Value" Text="{Binding Value}" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Label}" FontSize="12" Opacity="0.8" />
+                                        </StackPanel>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Alert}" Value="True">
+                                            <Setter TargetName="Value" Property="Foreground" Value="#FFF0883E" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding ExtraLine}" Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,0" />
                         <TextBlock Text="{Binding CurrentFile}" Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,0"
                                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding ExtractWarning}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="DarkOrange" FontWeight="SemiBold" />
@@ -108,7 +133,10 @@
             </TabItem>
 
             <!-- ============================ 2  ORGANIZE ============================ -->
-            <TabItem Header="2   Organize">
+            <TabItem AutomationProperties.Name="2   Organize">
+                <TabItem.Header>
+                    <TextBlock Text="2   Organize" Style="{StaticResource TabHeader}" />
+                </TabItem.Header>
                 <Grid Margin="4,4,8,8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -154,7 +182,7 @@
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" MinWidth="150" />
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" MinWidth="190" />
                                     <TextBlock Text="{Binding Detail}" Opacity="0.75" Margin="12,0,0,0" />
                                 </StackPanel>
                             </HierarchicalDataTemplate>

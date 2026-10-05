@@ -17,8 +17,14 @@
     <RootNamespace>PhotoSorter.App</RootNamespace>
     <!-- longPathAware + PerMonitorV2 DPI -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icon: drawn by tools/IconGen/IconGen.cs (see the comment at its top to regenerate) -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- Fluent theme (ThemeMode="System": follows Windows light/dark) is still flagged experimental -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
 
 </Project>

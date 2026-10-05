@@ -66,6 +66,10 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 - File-based C# apps (`dotnet run x.cs`) default to AOT/trimming; WPF scripts need
   `#:property PublishAot=false`.
 - Tests that sort file names must use `StringComparer.Ordinal` – culture sorting differs per machine.
+- **Never rewrite text files with Windows PowerShell 5.1** `Get-Content`/`Set-Content`: it reads UTF-8 without
+  BOM as Windows-1252 and saves double-encoded text (every å/ä/ö/… becomes two garbage characters). Use an editor, `pwsh` 7, or .NET/Python
+  with explicit UTF-8. `ArchitectureTests.Source_files_have_no_double_encoded_text` catches it.
+- XML comments (csproj, XAML) can't contain `--`. And `sed` turns `\a` in a replacement into a bell character.
 - UI Automation from PowerShell can be very slow, and texts on a hidden tab aren't visible to it. For
   end-to-end checks, drive the Core engine directly or read the catalog (`runs` table) instead.
 

@@ -8,14 +8,19 @@ using PhotoSorter.Core.Models;
 
 namespace PhotoSorter.App.ViewModels;
 
+/// <param name="Alert">Shown in a warning colour (e.g. errors &gt; 0).</param>
+public sealed record StatTile(string Label, string Value, bool Alert = false);
+
 /// <summary>Tab 1 – Extract.</summary>
 public partial class MainViewModel
 {
     [ObservableProperty] public partial string ExtractStatus { get; set; } = "Add the folders to search, choose a destination, then press Start.";
     [ObservableProperty] public partial double ExtractPercent { get; set; }
     [ObservableProperty] public partial bool ExtractIndeterminate { get; set; }
-    [ObservableProperty] public partial string FoundLine { get; set; } = "";
-    [ObservableProperty] public partial string CopiedLine { get; set; } = "";
+    /// <summary>The run's numbers as tiles (big value, small label).</summary>
+    [ObservableProperty] public partial IReadOnlyList<StatTile> Stats { get; set; } = [];
+    /// <summary>Less important counts (skipped, suspect) in one quiet line.</summary>
+    [ObservableProperty] public partial string ExtraLine { get; set; } = "";
     [ObservableProperty] public partial string CurrentFile { get; set; } = "";
     [ObservableProperty] public partial string? ExtractWarning { get; set; }
 
@@ -46,7 +51,8 @@ public partial class MainViewModel
         DiscardPlan("New files were extracted – press Preview again.");
         var ct = BeginWork();
         ExtractWarning = null;
-        FoundLine = CopiedLine = CurrentFile = "";
+        Stats = [];
+        ExtraLine = CurrentFile = "";
         ExtractPercent = 0;
         var progress = new Progress<ScanProgress>(ShowProgress);
         var organizeNext = false;
@@ -88,10 +94,19 @@ public partial class MainViewModel
         if (p.Phase == ScanPhase.Counting) ExtractStatus = "Counting files…";
         else if (p.Phase == ScanPhase.Extracting) ExtractStatus = $"Extracting… {N(p.FilesSeen)} of {N(p.TotalFiles)} files looked at";
 
-        FoundLine = $"Found {N(p.PhotosFound)} photos and {N(p.VideosFound)} videos  ·  {N(p.Unique)} new  ·  " +
-                    $"{N(p.Duplicates)} duplicates  ·  {N(p.AlreadyCataloged)} done in earlier runs";
-        CopiedLine = $"{(DryRun ? "Would copy" : "Copied")} {ByteSize.Format(p.BytesCopied)}  ·  Skipped {N(p.Skipped)}  ·  " +
-                     $"Suspect {N(p.Suspects)}  ·  Errors {N(p.Errors)}  ·  {p.Elapsed:hh\\:mm\\:ss}";
+        Stats =
+        [
+            new("Photos found", N(p.PhotosFound)),
+            new("Videos found", N(p.VideosFound)),
+            new(DryRun ? "Would be new" : "New copies", N(p.Unique)),
+            new("Duplicates", N(p.Duplicates)),
+            new("Done earlier", N(p.AlreadyCataloged)),
+            new(DryRun ? "Would copy" : "Copied", ByteSize.Format(p.BytesCopied)),
+            new("Errors", N(p.Errors), Alert: p.Errors > 0),
+            new("Time", p.Elapsed.ToString(@"hh\:mm\:ss")),
+        ];
+        ExtraLine = p.Skipped + p.Suspects == 0 ? "" :
+            $"Also left out: {N(p.Skipped)} too small or switched off · {N(p.Suspects)} named like photos but aren't (see the log)";
         CurrentFile = p.CurrentPath ?? "";
         ExtractWarning = p.Warning;
     }

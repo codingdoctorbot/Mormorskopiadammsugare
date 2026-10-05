@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # WPF only builds on Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build and test
+        run: dotnet test --solution PhotoSorter.sln -c Release
+
+      - name: Publish portable app
+        run: dotnet publish src/PhotoSorter.App -p:PublishProfile=Portable
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PhotoSorter-portable
+          path: dist/Mormorskopiadammsugare/
+          retention-days: 14

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhotoSorter.Core\PhotoSorter.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Output exe is named Mormorskopiadammsugare.exe -->
+    <AssemblyName>Mormorskopiadammsugare</AssemblyName>
+    <RootNamespace>PhotoSorter.App</RootNamespace>
+    <!-- longPathAware + PerMonitorV2 DPI -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Fluent theme (ThemeMode="System": follows Windows light/dark) is still flagged experimental -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,162 @@
+<Window x:Class="PhotoSorter.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:PhotoSorter.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="Mormorskopiadammsugare" Width="940" Height="820" MinWidth="680" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel Margin="20,12,20,16">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <TextBlock Text="Mormorskopiadammsugare" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="Copies every unique photo and video out of your backups, then sorts them into Continent \ Year folders. Your original files are never changed, moved or deleted." />
+        </StackPanel>
+
+        <TabControl SelectedIndex="{Binding SelectedTabIndex}">
+
+            <!-- ============================ 1  EXTRACT ============================ -->
+            <TabItem Header="1   Extract">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="4,4,8,8">
+
+                        <Border Style="{StaticResource Card}" IsEnabled="{Binding IsIdle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Folders to search" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid>
+                                        <ListBox x:Name="SourcesList" Height="120" AllowDrop="True" Drop="SourcesList_Drop" DragOver="SourcesList_DragOver"
+                                                 ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" />
+                                        <TextBlock Style="{StaticResource Hint}" IsHitTestVisible="False" Margin="12,0"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center"
+                                                   Text="Add the backup folders, or drag them here from Explorer."
+                                                   Visibility="{Binding Sources.Count, Converter={StaticResource ZeroToVisible}}" />
+                                    </Grid>
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <Button Content="Add folders…" Command="{Binding AddSourcesCommand}" MinWidth="120" />
+                                        <Button Content="Remove" Command="{Binding RemoveSourceCommand}" MinWidth="120" Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Destination" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding Destination, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" />
+                                    <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseDestinationCommand}" MinWidth="120" Margin="10,0,0,0" />
+                                </Grid>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" FontSize="12"
+                                           Text="Copies go to Extracted\ in this folder, then get sorted into Continent\Year\. The catalog and logs are kept in _Mormorskopiadammsugare\." />
+
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Options" />
+                                <WrapPanel>
+                                    <CheckBox Content="Photos" IsChecked="{Binding IncludePhotos}" Margin="0,0,24,6" />
+                                    <CheckBox Content="Videos" IsChecked="{Binding IncludeVideos}" Margin="0,0,24,6" />
+                                    <CheckBox Content="Skip app caches" IsChecked="{Binding SkipAppCaches}" Margin="0,0,24,6"
+                                              ToolTip="Skips AppData, browser caches and thumbnail folders." />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,24,6">
+                                        <CheckBox Content="Skip files under" IsChecked="{Binding SkipSmallFiles}" VerticalAlignment="Center"
+                                                  ToolTip="Tiny files are icons, web graphics and thumbnails – not your photos." />
+                                        <TextBox Text="{Binding MinSizeKb}" Width="64" Margin="6,0" IsEnabled="{Binding SkipSmallFiles}" VerticalContentAlignment="Center" />
+                                        <TextBlock Text="KB" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <WrapPanel Margin="0,4,0,0">
+                                    <CheckBox Content="Verify copies" IsChecked="{Binding VerifyCopies}" Margin="0,0,24,6"
+                                              ToolTip="Reads every copy back and compares it with the original. Slower, extra safe." />
+                                    <CheckBox Content="Dry run (copy nothing)" IsChecked="{Binding DryRun}" Margin="0,0,24,6"
+                                              ToolTip="Counts what would be copied without copying anything." />
+                                    <CheckBox Content="Copy suspect files" IsChecked="{Binding CopySuspect}" Margin="0,0,24,6"
+                                              ToolTip="Files named like photos/videos whose content doesn't match go to Extracted\_suspect." />
+                                    <CheckBox Content="Organize automatically afterwards" IsChecked="{Binding OrganizeAfterExtract}" Margin="0,0,24,6"
+                                              ToolTip="Sorts the new copies into Continent\Year as soon as extraction finishes." />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,24,6"
+                                                ToolTip="Files read at the same time. 4 suits SSDs; use 1 for USB hard drives.">
+                                        <TextBlock Text="Parallel reads" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <ComboBox ItemsSource="{Binding ParallelismChoices}" SelectedItem="{Binding Parallelism}" Width="80" />
+                                    </StackPanel>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <Button Content="Start" Command="{Binding StartExtractCommand}" MinWidth="140" Height="36"
+                                    Style="{DynamicResource AccentButtonStyle}" />
+                            <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="100" Margin="10,0,0,0" />
+                            <Button Content="Open destination" Command="{Binding OpenDestinationCommand}" Margin="10,0,0,0" />
+                            <Button Content="Show log" Command="{Binding OpenLogCommand}" Margin="10,0,0,0" />
+                        </StackPanel>
+
+                        <ProgressBar Height="8" Margin="0,16,0,0" Value="{Binding ExtractPercent}" IsIndeterminate="{Binding ExtractIndeterminate}" />
+                        <TextBlock Text="{Binding ExtractStatus}" TextWrapping="Wrap" Margin="0,10,0,0" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FoundLine}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding CopiedLine}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding CurrentFile}" Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,0"
+                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ExtractWarning}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="DarkOrange" FontWeight="SemiBold" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ 2  ORGANIZE ============================ -->
+            <TabItem Header="2   Organize">
+                <Grid Margin="4,4,8,8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Style="{StaticResource Card}" IsEnabled="{Binding IsIdle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="Sort into Continent \ Year" />
+                            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap">
+                                <Run Text="The year comes from the photo's own date, then dates in file names (IMG_20150612…), then years in folder names (Rome 2009). The continent comes from GPS. Files without a known place go to _Unknown location, files without a year to _Unknown year." />
+                            </TextBlock>
+                            <TextBlock Margin="0,10,0,0">
+                                <Run Text="Destination: " /><Run Text="{Binding Destination, Mode=OneWay}" FontWeight="SemiBold" />
+                            </TextBlock>
+                            <CheckBox Content="Use the file's modified date when nothing better is known" IsChecked="{Binding UseFileDatesAsLastResort}" Margin="0,10,0,0"
+                                      ToolTip="Off by default: copying files into backups often resets that date to the day of the backup." />
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,16,0,0">
+                        <Button Content="Preview" Command="{Binding AnalyzeCommand}" MinWidth="120" Height="36" />
+                        <Button Content="Organize" Command="{Binding OrganizeCommand}" MinWidth="140" Margin="10,0,0,0"
+                                Style="{DynamicResource AccentButtonStyle}" />
+                        <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="100" Margin="10,0,0,0" />
+                        <Button Content="Open destination" Command="{Binding OpenDestinationCommand}" Margin="10,0,0,0" />
+                        <Button Content="Show log" Command="{Binding OpenLogCommand}" Margin="10,0,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2">
+                        <ProgressBar Height="8" Margin="0,16,0,0" Value="{Binding OrganizePercent}" IsIndeterminate="{Binding OrganizeIndeterminate}" />
+                        <TextBlock Text="{Binding OrganizeStatus}" TextWrapping="Wrap" Margin="0,10,0,10" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <TreeView Grid.Row="3" ItemsSource="{Binding Buckets}" MinHeight="120">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" MinWidth="150" />
+                                    <TextBlock Text="{Binding Detail}" Opacity="0.75" Margin="12,0,0,0" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

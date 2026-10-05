@@ -1,0 +1,118 @@
+# 🔁 HANDOFF – Mormorskopiadammsugare
+
+> **Read this first** (developers and AI coding agents alike). Then `docs/ARCHITECTURE.md` (the spec)
+> and `docs/TASKS.md` (the checklist). Update this file + TASKS.md at the end of every work session.
+>
+> Code and project names are `PhotoSorter.*` (the working title); the product is called
+> Mormorskopiadammsugare ("grandma's copy vacuum cleaner").
+
+## What it does
+A **portable** (no install, runs from a folder) Windows desktop app that:
+1. **Extract:** scans huge piles of nested "backups of backups" (designed for ~300 GB / ~100k files /
+   ~30k folders), finds every **photo and video** (any format, also renamed / extension-less ones),
+   de-duplicates by SHA-256 and **copies** each unique file once into a destination folder.
+2. **Organize:** moves the extracted copies into **`Continent\Year\`** (EXIF/QuickTime GPS → offline
+   continent lookup; capture date → file-name date → folder-name year). Fallback buckets:
+   `Continent\_Unknown year\`, `_Unknown location\Year\`, `_Unknown location\_Unknown year\`.
+
+## Product decisions
+| Topic | Decision |
+|---|---|
+| Copy vs move | **Copy.** Never modify, move or delete source files. |
+| Layout | **Continent → Year** (continent is enough, no country/city folders) |
+| Videos | Included, mixed with photos in the same folders. Audio is not included. |
+| ZIP / archives | Ignored for now |
+| Install | End product must need **no install**: one self-contained exe |
+| Source folders | Chosen in the UI (folder pickers, drag & drop). Never hardcode a drive. |
+| Target | .NET 10 (LTS, supported to Nov 2028) |
+| UI language | English |
+
+## Dev environment
+| Tool | Notes |
+|---|---|
+| .NET 10 SDK | Pinned by `global.json` (10.0.x, latest feature band) |
+| Tests | xUnit v3 on **Microsoft.Testing.Platform** (opted in via `global.json`, required on the .NET 10 SDK). `dotnet test --solution PhotoSorter.sln` |
+| IDE | Optional: Visual Studio 2026 (WPF designer, debugger, Test Explorer) or any editor |
+| Scripts | PowerShell 5.1 or 7. Run with a normal `RemoteSigned` execution policy – no bypass needed |
+| CI | `.github/workflows/build.yml` (every push), `release.yml` (tags `v*` → release with attestation) |
+
+## Current status
+- ✅ **v0.1 prototype: Extract and Organize both work end to end** in the portable exe
+  (`dist\Mormorskopiadammsugare\Mormorskopiadammsugare.exe`, ~64 MB, Fluent UI following Windows light/dark).
+- ✅ 126 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+  destination inside source), EXIF/ISO 6709 parsing, date rules, 22 continent lookups, organizer.
+- ✅ Verified on a generated 10 GB "backups of backups" pile built from Wikimedia Commons
+  *featured pictures* (5,974 files: hard-linked backup copies, renamed/extension-less/recovered files,
+  595-character paths, junk, caches, fake `.jpg`s): result matched an independent answer key exactly
+  (1,055 unique, 1,467 duplicates, nothing missing/extra/doubled, sources untouched), also after
+  cancelling mid-run and resuming.
+- ✅ Verified on 58 real camera/phone files (JPEG, HEIC, RAW, MOV, MP4, AVI) from the public
+  metadata-extractor test corpus: 56/58 dated from metadata; iPhone MOV and Android MP4 GPS read.
+- ⚠️ Known gaps: video metadata only from MOV/MP4/3GP (QuickTime) and AVI – MTS/MKV/WMV/MPG rely on
+  file/folder names; XMP dates not read; `Extracted\` stays (empty) after organizing; exact
+  duplicates only (resized/re-compressed copies are kept).
+- ⏭️ Next: see `docs/TASKS.md` → "Next".
+
+### Testing policy
+- **Never use anyone's personal photos as test data**, and never commit test media. Use generated files
+  (`tests/.../TestFiles.cs`) or public sample sets downloaded to a temp folder.
+
+### Gotchas found while building (don't repeat them)
+- An embedded resource named `countries.bin.gz` silently ends up in a *satellite* assembly:
+  MSBuild reads `bin` as a culture (the Bini language). The file is `Geo/countries.gz`.
+- MTP test runner: `dotnet test` must not get `-nologo` (exit code 5 = invalid argument);
+  zero tests = exit code 8.
+- `Select-Object -First N` in PowerShell kills the upstream `dotnet build` early – don't pipe builds into it.
+- File-based C# apps (`dotnet run x.cs`) default to AOT/trimming; WPF scripts need
+  `#:property PublishAot=false`.
+- Tests that sort file names must use `StringComparer.Ordinal` – culture sorting differs per machine.
+- UI Automation from PowerShell can be very slow, and texts on a hidden tab aren't visible to it. For
+  end-to-end checks, drive the Core engine directly or read the catalog (`runs` table) instead.
+
+## How to build / run
+Plain `dotnet` commands work. The scripts are thin conveniences around them.
+
+```powershell
+# from the repo root
+dotnet test --solution PhotoSorter.sln                        # build + tests   (= .\scripts\build.ps1)
+dotnet publish src\PhotoSorter.App -p:PublishProfile=Portable # -> dist\Mormorskopiadammsugare\   (= .\scripts\publish.ps1, which also clears dist first)
+dotnet run --project src\PhotoSorter.App                      # run the app
+```
+
+## Project map
+```
+PhotoSorter.sln
+global.json                – pins .NET SDK 10.0.x + Microsoft.Testing.Platform test runner
+src/PhotoSorter.Core/      net10.0          – all logic (no UI), unit-testable
+  Detection/   ExtensionRegistry, SignatureSniffer, FileClassifier
+  Scanning/    FileEnumerator            Hashing/  FileHasher
+  Extraction/  ExtractionPipeline (Extract), CopyService, NameResolver
+  Catalog/     CatalogDb (SQLite)        Logging/  CsvRunLog
+  Metadata/    MetadataReader, DateResolver + FileNameDatePatterns
+  Geo/         ContinentLocator + countries.gz (embedded Natural Earth data)
+  Organizing/  Organizer (AnalyzeAsync preview, ApplyAsync move) + FolderLayout
+src/PhotoSorter.App/       net10.0-windows  – WPF shell (MainWindow + MainViewModel*.cs), settings
+  Properties/PublishProfiles/Portable.pubxml – portable single-file publish settings
+tests/PhotoSorter.Core.Tests/  xUnit v3     – TestFiles.cs builds real JPEG/EXIF/MP4 bytes
+tools/GeoPrep/             – regenerates Geo/countries.gz from Natural Earth (dotnet run --project tools/GeoPrep)
+docs/ARCHITECTURE.md       – full spec, diagrams, signature table, DB schema
+docs/TASKS.md              – phased checklist
+docs/releases/             – release notes per tag
+scripts/                   – build.ps1, publish.ps1
+```
+
+## Key design rules (don't break these)
+1. **Sources are read-only.** Open with `FileAccess.Read, FileShare.ReadWrite`.
+2. **Exclude the destination** from the scan (it could be inside a source).
+3. Copy via `*.partial` then rename; preserve original timestamps.
+4. Per-file error isolation: log & continue, never abort the run (except disk full).
+5. All long work = `async Task RunAsync(options, IProgress<T>, CancellationToken)` in Core.
+6. Catalog `catalog.db` + CSV logs live in `<Destination>\_Mormorskopiadammsugare\`.
+   Re-runs must **resume** (skip source paths already recorded with same size+mtime).
+7. Default parallelism = 4 (SSD); option 1–8 (use 1 for HDD/USB).
+8. The `ftyp` **brand** decides the type: HEIC/AVIF/CR3 = photo, `isom`/`mp4x`/`qt  `/`3gpx` = video,
+   `M4A `/`M4B ` = audio (skip). Weak signatures (ICO, old QuickTime atoms, ASF) need the matching extension.
+9. Skip macOS `._*` files, `Thumbs.db`, `desktop.ini`, reparse points.
+10. Settings in `settings.json` next to the exe (portable).
+11. File modified time is **not** a trusted year source (backups reset it) –
+    only used if the user enables the option; otherwise → `_Unknown year\`.

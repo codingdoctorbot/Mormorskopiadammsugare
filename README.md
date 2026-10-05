@@ -9,6 +9,8 @@ and sorts them into **`Continent\Year\`** folders. A portable Windows app – no
 
 **Your original files are never changed, moved or deleted.** Everything is copied.
 
+📖 **[Manual](docs/MANUAL.md)** · **[Bruksanvisning på svenska](docs/MANUAL.sv.md)** · [What's new](CHANGELOG.md)
+
 ![Organize tab: preview of the Continent → Country → Year tree](docs/screenshots/organize.png)
 
 ## What it does
@@ -107,7 +109,7 @@ dotnet publish src\PhotoSorter.App -p:PublishProfile=Portable   # → dist\Mormo
 ```
 
 Developer notes: [HANDOFF.md](HANDOFF.md) · spec: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
-roadmap: [docs/TASKS.md](docs/TASKS.md). (The code's working title is `PhotoSorter`.)
+roadmap: [docs/TASKS.md](docs/TASKS.md) · history: [docs/SESSIONS.md](docs/SESSIONS.md). (The code's working title is `PhotoSorter`.)
 
 ## License
 

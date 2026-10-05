@@ -1,7 +1,10 @@
 # 🔁 HANDOFF – Mormorskopiadammsugare
 
-> **Read this first** (developers and AI coding agents alike). Then `docs/ARCHITECTURE.md` (the spec)
-> and `docs/TASKS.md` (the checklist). Update this file + TASKS.md at the end of every work session.
+> **Read this first** (developers and AI coding agents alike). Then `docs/ARCHITECTURE.md` (the spec),
+> `docs/TASKS.md` (the checklist) and the latest entry in `docs/SESSIONS.md` (what happened last time).
+>
+> **At the end of every work session:** update this file's *Current status*, tick `docs/TASKS.md`,
+> add an entry to `docs/SESSIONS.md`, and add user-visible changes to `CHANGELOG.md` (*Unreleased*).
 >
 > Code and project names are `PhotoSorter.*` (the working title); the product is called
 > Mormorskopiadammsugare ("grandma's copy vacuum cleaner").
@@ -36,11 +39,20 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 | Scripts | PowerShell 5.1 or 7. Run with a normal `RemoteSigned` execution policy – no bypass needed |
 | CI | `.github/workflows/build.yml` (every push), `release.yml` (tags `v*` → release with attestation) |
 
-## Current status
-- ✅ **v0.1 prototype: Extract and Organize both work end to end** in the portable exe
-  (`dist\Mormorskopiadammsugare\Mormorskopiadammsugare.exe`, ~64 MB, Fluent UI following Windows light/dark).
-- ✅ 150 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
-  destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl. layout switching.
+## Current status  (2026-10-05)
+- ✅ **v0.1.0 feature-complete: Extract and Organize both work end to end** in the portable exe
+  (`dist\Mormorskopiadammsugare\Mormorskopiadammsugare.exe`, ~64 MB, Fluent UI following Windows light/dark,
+  own icon, run statistics as number tiles).
+- ✅ Layout options: `Continent\Year` (default), `Continent\Country\Year`, and for Sweden `…\Sweden\<län>\Year`.
+  Switching later just moves files.
+- ✅ 151 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+  destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
+  layout switching, and a guard against double-encoded source files.
+- ⏳ **Release v0.1.0 not tagged yet.** GitHub Actions had an outage (hosted runners not assigned – builds
+  failed with "job was not acquired by Runner"). **Next step: when a `build` run on `main` is green, run
+  `git tag v0.1.0 && git push origin v0.1.0`**, wait for `release.yml`, then verify the published exe with
+  `gh attestation verify` (see README) and compare SHA256SUMS.
+- ⏳ First real-world run (on the owner's own backups) in progress – feedback may change priorities.
 - ✅ Verified on a generated 10 GB "backups of backups" pile built from Wikimedia Commons
   *featured pictures* (5,974 files: hard-linked backup copies, renamed/extension-less/recovered files,
   595-character paths, junk, caches, fake `.jpg`s): result matched an independent answer key exactly
@@ -95,12 +107,16 @@ src/PhotoSorter.Core/      net10.0          – all logic (no UI), unit-testable
   Metadata/    MetadataReader, DateResolver + FileNameDatePatterns
   Geo/         ContinentLocator + countries.gz (embedded Natural Earth countries + Swedish län)
   Organizing/  Organizer (AnalyzeAsync preview, ApplyAsync move) + FolderLayout
-src/PhotoSorter.App/       net10.0-windows  – WPF shell (MainWindow + MainViewModel*.cs), settings
+src/PhotoSorter.App/       net10.0-windows  – WPF shell (MainWindow + MainViewModel*.cs), settings, Assets/app.ico
   Properties/PublishProfiles/Portable.pubxml – portable single-file publish settings
 tests/PhotoSorter.Core.Tests/  xUnit v3     – TestFiles.cs builds real JPEG/EXIF/MP4 bytes
 tools/GeoPrep/             – regenerates Geo/countries.gz from Natural Earth admin-0 + admin-1 (dotnet run --project tools/GeoPrep)
+tools/IconGen/IconGen.cs   – draws the app icon (dotnet run tools/IconGen/IconGen.cs, then copy app.ico to Assets)
 docs/ARCHITECTURE.md       – full spec, diagrams, signature table, DB schema
 docs/TASKS.md              – phased checklist
+docs/SESSIONS.md           – session log: what each work session did, decided and learned
+docs/MANUAL.md, MANUAL.sv.md – user manual (English / Swedish)
+CHANGELOG.md               – user-visible changes per version
 docs/releases/             – release notes per tag
 scripts/                   – build.ps1, publish.ps1
 ```

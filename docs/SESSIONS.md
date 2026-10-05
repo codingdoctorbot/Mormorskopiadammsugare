@@ -1,0 +1,97 @@
+# Session log
+
+One entry per work session, newest first: **what** was done, **decisions** taken (and why), and
+**lessons** worth knowing next time. Current state lives in [HANDOFF.md](../HANDOFF.md); this file is
+the history behind it. Keep entries short and free of personal details.
+
+---
+
+## 2026-10-05 · Session 6 – Layout options, icon, readability
+
+**Done**
+- Optional **country folders** (`Continent\Country\Year`) and, for photos from Sweden, **län folders**
+  (`Europe\Sweden\Skåne län\Year`). Geo data format PSGEO3: per-part names/codes for overseas territories
+  (Réunion, French Guiana, Caribbean Netherlands…), friendly country names, Natural Earth admin-1 regions
+  for Sweden (21 län, Swedish names).
+- App **icon** (vector, `tools/IconGen`), statistics shown as **number tiles**, larger tab headers.
+- Test guard against double-encoded source files.
+- User manual (English + Swedish).
+
+**Decisions**
+- Country and län levels are **options**, not replacements – switching later only moves files.
+- Län only below a country folder, and only for Sweden (asked for; other countries unaffected).
+- Archipelago/boat points inside Sweden take the **nearest** län (no distance limit – the country is known).
+
+**Lessons**
+- Windows PowerShell 5.1 `Get-Content`/`Set-Content` garbled å/ä/ö in XAML (read UTF-8 as Windows-1252).
+  Caught in screenshots; now guarded by a test.
+- `sed` replacement text turns `\a` into a bell character; XML comments can't contain `--`.
+- GitHub Actions outage: jobs failed with "not acquired by Runner". Release tagging postponed – see HANDOFF.
+
+## 2026-10-05 · Session 5 – Scale test, review, public release prep
+
+**Done**
+- 10 GB end-to-end test on a generated "backups of backups" pile from Wikimedia Commons featured
+  pictures (5,974 files, hard-linked copies, 595-char paths) against an independent answer key – exact match,
+  also after cancel + resume.
+- Two code reviews; fixed: timestamp failures no longer fail a copy, catalog-update failure moves the file
+  back, files whose source was edited keep their name, stale preview discarded when settings change,
+  Organize errors reported.
+- Software edit date (`ExifModified`) now ranks below file/folder-name dates.
+- Renamed to **Mormorskopiadammsugare**, MIT license, third-party notices, release workflow
+  (build on GitHub + signed build attestation + SHA256SUMS), scrubbed docs, fresh public repository.
+
+**Decisions**
+- Public repo starts from one clean commit (no personal details in history).
+- Releases are only built by GitHub Actions, never uploaded from a personal machine – that's what makes
+  the attestation meaningful.
+- Code names stay `PhotoSorter.*`; only user-visible names changed. Old `_PhotoSorter` folders migrate.
+
+**Lessons**
+- UI Automation from PowerShell can stall for minutes; texts on hidden tabs aren't visible to it. End-to-end
+  checks now drive the Core engine or read the catalog's `runs` table instead.
+- An app's own timestamps (catalog `runs`, CSV logs) beat a test harness's stopwatch.
+
+## 2026-10-05 · Session 4 – Real sample media
+
+**Done**
+- Verified metadata reading on 58 real camera/phone files from a public test corpus (JPEG, HEIC, RAW,
+  MOV, MP4, AVI): 56/58 dated from metadata; iPhone MOV and Android MP4 GPS read.
+- Organizer picks the **best name among copies** (`Nokia 6.1.mp4` beats `FILE0043.mp4`).
+
+**Decisions**
+- **Never use anyone's personal photos for testing**; download public samples to a temp folder; never
+  commit media.
+
+**Lessons**
+- Files "without GPS" were checked tag by tag: they genuinely had none (void fix, empty block, 0,0).
+
+## 2026-10-05 · Session 3 – Prototype
+
+**Done**
+- Phase 1 (Extract) and Phase 2 (Organize) end to end: detection by content, SHA-256 de-duplication,
+  SQLite catalog with resume, `.partial` copies, crash recovery, metadata, offline continent lookup
+  (Natural Earth, embedded), WPF UI. 116 tests.
+
+**Lessons**
+- An embedded resource named `countries.bin.gz` lands in a satellite assembly – MSBuild reads `bin` as the
+  culture "Bini". Renamed to `countries.gz`.
+- MTP test runner: no `-nologo`; zero tests = exit code 8.
+
+## 2026-10-05 · Session 2 – Environment and .NET 10
+
+**Done**
+- Proper dev setup instead of workarounds (machine-wide SDK, normal script execution policy, long paths).
+- Retargeted to **.NET 10 LTS** (.NET 8 support ends Nov 2026), xUnit v3 on Microsoft.Testing.Platform,
+  `global.json`, publish profile, CI.
+
+## 2026-10-05 · Session 1 – Plan
+
+**Done**
+- Requirements and plan: copy-only extraction of every unique photo/video from ~300 GB of nested backups,
+  then sorting into `Continent\Year`, portable exe, catalog for resume. Spec in `docs/ARCHITECTURE.md`,
+  checklist in `docs/TASKS.md`.
+
+**Decisions**
+- Copy, never move. Videos included, mixed with photos. ZIP archives ignored for now.
+- File modified time is not a trusted year source (backups reset it).

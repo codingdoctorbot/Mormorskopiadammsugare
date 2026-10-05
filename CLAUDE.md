@@ -1,8 +1,10 @@
 # Mormorskopiadammsugare – agent notes
 
 Start with [HANDOFF.md](HANDOFF.md) (status, decisions, design rules, dev environment), then
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/TASKS.md](docs/TASKS.md).
-Update HANDOFF.md + TASKS.md at the end of every work session.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/TASKS.md](docs/TASKS.md) and the latest entry in
+[docs/SESSIONS.md](docs/SESSIONS.md).
+At the end of every work session: update HANDOFF.md (Current status), tick TASKS.md, add a SESSIONS.md
+entry, and note user-visible changes under *Unreleased* in CHANGELOG.md.
 
 - Build + test: `dotnet test --solution PhotoSorter.sln` (or `.\scripts\build.ps1`). The tests run on
   Microsoft.Testing.Platform, which is configured in `global.json`.

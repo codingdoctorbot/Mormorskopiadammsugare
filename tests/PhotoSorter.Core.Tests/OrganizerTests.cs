@@ -60,6 +60,82 @@ public class OrganizerTests : IDisposable
     }
 
     [Fact]
+    public async Task Country_folders_add_a_level_only_where_the_location_is_known()
+    {
+        CreatePile();
+        await ExtractAsync();
+        var organizer = new Organizer();
+        var options = new OrganizeOptions { Destination = Dest, CountryFolders = true };
+
+        var plan = await organizer.AnalyzeAsync(options, null, Ct);
+        await organizer.ApplyAsync(plan, null, Ct);
+
+        Assert.Equal(
+        [
+            @"Asia\Japan\_Unknown year\tokyo.jpg",
+            @"Europe\Sweden\2015\stockholm.jpg",
+            @"_Unknown location\2009\DSC_0042.jpg",
+            @"_Unknown location\2012\IMG_20120304_101010.jpg",
+            @"_Unknown location\2016\VID_20160301_101010.mp4",
+            @"_Unknown location\_Unknown year\scan.jpg",
+        ], SortedFiles());
+        Assert.Contains(plan.Buckets, b => b is { Location: "Europe", Country: "Sweden", Year: "2015", Count: 1 });
+        Assert.Contains(plan.Buckets, b => b is { Location: "_Unknown location", Country: null, Year: "2009" });
+    }
+
+    [Fact]
+    public async Task Swedish_photos_can_get_a_county_level()
+    {
+        CreatePile();
+        TestFiles.Write(Src(@"Phone\malmo.jpg"), TestFiles.Jpeg(seed: 7, taken: new(2016, 5, 1, 12, 0, 0), gps: (55.6050, 13.0038)));
+        await ExtractAsync();
+        var organizer = new Organizer();
+        var options = new OrganizeOptions { Destination = Dest, CountryFolders = true, SwedishCountyFolders = true };
+
+        var plan = await organizer.AnalyzeAsync(options, null, Ct);
+        await organizer.ApplyAsync(plan, null, Ct);
+
+        Assert.Contains(@"Europe\Sweden\Stockholms län\2015\stockholm.jpg", SortedFiles());
+        Assert.Contains(@"Europe\Sweden\Skåne län\2016\malmo.jpg", SortedFiles());
+        Assert.Contains(@"Asia\Japan\_Unknown year\tokyo.jpg", SortedFiles());        // other countries: no county level
+        Assert.Contains(@"_Unknown location\2009\DSC_0042.jpg", SortedFiles());
+        Assert.Contains(plan.Buckets, b => b is { Country: "Sweden", Region: "Skåne län", Year: "2016", Count: 1 });
+    }
+
+    [Fact]
+    public async Task County_option_alone_does_nothing_without_country_folders()
+    {
+        CreatePile();
+        await ExtractAsync();
+        var organizer = new Organizer();
+
+        await organizer.ApplyAsync(await organizer.AnalyzeAsync(
+            new OrganizeOptions { Destination = Dest, SwedishCountyFolders = true }, null, Ct), null, Ct);
+
+        Assert.Contains(@"Europe\2015\stockholm.jpg", SortedFiles());
+    }
+
+    [Fact]
+    public async Task Switching_layout_later_just_moves_the_sorted_files()
+    {
+        CreatePile();
+        await ExtractAsync();
+        var organizer = new Organizer();
+        await organizer.ApplyAsync(await organizer.AnalyzeAsync(new OrganizeOptions { Destination = Dest }, null, Ct), null, Ct);
+
+        var withCountry = await organizer.AnalyzeAsync(new OrganizeOptions { Destination = Dest, CountryFolders = true }, null, Ct);
+        await organizer.ApplyAsync(withCountry, null, Ct);
+        var back = await organizer.AnalyzeAsync(new OrganizeOptions { Destination = Dest }, null, Ct);
+        await organizer.ApplyAsync(back, null, Ct);
+
+        Assert.Equal(2, withCountry.Moves.Count); // only the two files with GPS change folder
+        Assert.Equal(2, back.Moves.Count);
+        Assert.Contains(@"Europe\2015\stockholm.jpg", SortedFiles());
+        Assert.Equal(6, SortedFiles().Length);
+        Assert.DoesNotContain(SortedFiles(), f => f.Contains("(2)"));
+    }
+
+    [Fact]
     public async Task Preview_counts_files_per_folder_and_moves_nothing()
     {
         CreatePile();

@@ -7,7 +7,7 @@ and sorts them into **`Continent\Year\`** folders. A portable Windows app – no
 
 **Your original files are never changed, moved or deleted.** Everything is copied.
 
-![Organize tab with the Continent → Year preview](docs/screenshots/organize.png)
+![Organize tab: preview of the Continent → Country → Year tree](docs/screenshots/organize.png)
 
 ## What it does
 
@@ -16,11 +16,13 @@ and sorts them into **`Continent\Year\`** folders. A portable Windows app – no
    from recovery tools…), and copies each unique one **once**. Duplicates are recognised by a
    SHA-256 fingerprint of the file's bytes, whatever their names.
 2. **Organize** – shows a preview of the folder tree, then moves the copies into
-   `Continent\Year\`:
+   `Continent\Year\` – or, if you prefer, `Continent\Country\Year\`, with an extra **län** level for
+   photos from Sweden (`Europe\Sweden\Skåne län\2015`). Switch any time; the next Organize just
+   moves the already sorted files into the new layout.
 
 ```
 Destination\
-├─ Europe\2015\ …            ← GPS says Europe, photo taken 2015
+├─ Europe\2015\ …            ← GPS says Europe, photo taken 2015   (or Europe\Italy\2015\ …)
 ├─ Asia\_Unknown year\ …      ← GPS known, no date anywhere
 ├─ _Unknown location\2009\ …  ← no GPS, but "Rome 2009" folder / date in file name
 ├─ _Unknown location\_Unknown year\ …
@@ -62,8 +64,9 @@ gh attestation verify Mormorskopiadammsugare.exe --repo codingdoctorbot/Mormorsk
    backups (`Backup 2019`, `Säkerhetskopia`), whose year is when the backup was made.
 4. Only if you tick the option: the file's modified date (off by default – backups reset it).
 
-**Continent** – from GPS in the photo or video, looked up **offline** in country outlines built into the
-exe ([Natural Earth](https://www.naturalearthdata.com)). Photos taken from a boat or beach match the
+**Continent / country / län** – from GPS in the photo or video, looked up **offline** in country and
+county outlines built into the exe ([Natural Earth](https://www.naturalearthdata.com)). Country folders use
+short names (*United States*, *Serbia*); overseas territories get their own (*Réunion*, *French Guiana*). Photos taken from a boat or beach match the
 nearest coast within 200 km. Russia east of the Urals and Asian Istanbul count as Asia; Réunion is
 Africa and French Guiana South America, even though they're part of France.
 

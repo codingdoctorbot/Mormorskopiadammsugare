@@ -119,14 +119,19 @@
 
                     <Border Style="{StaticResource Card}" IsEnabled="{Binding IsIdle}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitle}" Text="Sort into Continent \ Year" />
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="Sort into Continent \ (Country \) Year" />
                             <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap">
-                                <Run Text="The year comes from the photo's own date, then dates in file names (IMG_20150612…), then years in folder names (Rome 2009). The continent comes from GPS. Files without a known place go to _Unknown location, files without a year to _Unknown year." />
+                                <Run Text="The year comes from the photo's own date, then dates in file names (IMG_20150612…), then years in folder names (Rome 2009). The continent (and country) comes from GPS. Files without a known place go to _Unknown location, files without a year to _Unknown year." />
                             </TextBlock>
                             <TextBlock Margin="0,10,0,0">
                                 <Run Text="Destination: " /><Run Text="{Binding Destination, Mode=OneWay}" FontWeight="SemiBold" />
                             </TextBlock>
-                            <CheckBox Content="Use the file's modified date when nothing better is known" IsChecked="{Binding UseFileDatesAsLastResort}" Margin="0,10,0,0"
+                            <CheckBox Content="Add country folders: Continent \ Country \ Year" IsChecked="{Binding CountryFolders}" Margin="0,10,0,0"
+                                      ToolTip="Europe\Sweden\2015 instead of Europe\2015. You can switch any time – the next Organize moves already sorted files to the new layout." />
+                            <CheckBox Content="…and Swedish counties: Europe \ Sweden \ Skåne län \ Year" IsChecked="{Binding SwedishCountyFolders}"
+                                      IsEnabled="{Binding CountryFolders}" Margin="28,6,0,0"
+                                      ToolTip="Photos from Sweden get a län folder (all 21 counties). Other countries are not affected." />
+                            <CheckBox Content="Use the file's modified date when nothing better is known" IsChecked="{Binding UseFileDatesAsLastResort}" Margin="0,8,0,0"
                                       ToolTip="Off by default: copying files into backups often resets that date to the day of the backup." />
                         </StackPanel>
                     </Border>

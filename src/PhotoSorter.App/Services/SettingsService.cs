@@ -18,6 +18,8 @@ public sealed class AppSettings
     public int Parallelism { get; set; } = 4;
     public bool OrganizeAfterExtract { get; set; } = true;
     public bool UseFileDatesAsLastResort { get; set; }
+    public bool CountryFolders { get; set; }
+    public bool SwedishCountyFolders { get; set; }
 }
 
 /// <summary>

@@ -56,6 +56,11 @@ App (`src/PhotoSorter.App`):
 - [x] Best name among copies when organizing (`Nokia 6.1.mp4` beats `FILE0043.mp4`, `(1)`/`- Copy`/`kopia` lose) – `NameResolver.PreferredBaseName`
 - [ ] Progress by bytes rather than file count (big videos make the bar uneven)
 
+## Layout options  ✅ (v0.1.0)
+- [x] Optional country level `Continent\Country\Year` (friendly names, overseas territories named separately)
+- [x] Optional Swedish county (län) level `Europe\Sweden\<län>\Year` – Natural Earth admin-1, PSGEO3 data format
+- [x] Switching layouts on a sorted destination just moves files (tested both ways)
+
 ## Phase 4 – Polish (optional)
 - [ ] Thumbnail preview, duplicate review screen, pause/resume button
 - [ ] Guess location from folder names (`Thailand 2012`) for photos without GPS

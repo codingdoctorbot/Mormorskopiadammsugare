@@ -19,7 +19,7 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 | Topic | Decision |
 |---|---|
 | Copy vs move | **Copy.** Never modify, move or delete source files. |
-| Layout | **Continent → Year** (continent is enough, no country/city folders) |
+| Layout | **Continent → Year** by default; optional **Continent → Country → Year**, and for Sweden optionally **→ Län →** Year |
 | Videos | Included, mixed with photos in the same folders. Audio is not included. |
 | ZIP / archives | Ignored for now |
 | Install | End product must need **no install**: one self-contained exe |
@@ -39,8 +39,8 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 ## Current status
 - ✅ **v0.1 prototype: Extract and Organize both work end to end** in the portable exe
   (`dist\Mormorskopiadammsugare\Mormorskopiadammsugare.exe`, ~64 MB, Fluent UI following Windows light/dark).
-- ✅ 126 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
-  destination inside source), EXIF/ISO 6709 parsing, date rules, 22 continent lookups, organizer.
+- ✅ 150 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+  destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl. layout switching.
 - ✅ Verified on a generated 10 GB "backups of backups" pile built from Wikimedia Commons
   *featured pictures* (5,974 files: hard-linked backup copies, renamed/extension-less/recovered files,
   595-character paths, junk, caches, fake `.jpg`s): result matched an independent answer key exactly
@@ -89,12 +89,12 @@ src/PhotoSorter.Core/      net10.0          – all logic (no UI), unit-testable
   Extraction/  ExtractionPipeline (Extract), CopyService, NameResolver
   Catalog/     CatalogDb (SQLite)        Logging/  CsvRunLog
   Metadata/    MetadataReader, DateResolver + FileNameDatePatterns
-  Geo/         ContinentLocator + countries.gz (embedded Natural Earth data)
+  Geo/         ContinentLocator + countries.gz (embedded Natural Earth countries + Swedish län)
   Organizing/  Organizer (AnalyzeAsync preview, ApplyAsync move) + FolderLayout
 src/PhotoSorter.App/       net10.0-windows  – WPF shell (MainWindow + MainViewModel*.cs), settings
   Properties/PublishProfiles/Portable.pubxml – portable single-file publish settings
 tests/PhotoSorter.Core.Tests/  xUnit v3     – TestFiles.cs builds real JPEG/EXIF/MP4 bytes
-tools/GeoPrep/             – regenerates Geo/countries.gz from Natural Earth (dotnet run --project tools/GeoPrep)
+tools/GeoPrep/             – regenerates Geo/countries.gz from Natural Earth admin-0 + admin-1 (dotnet run --project tools/GeoPrep)
 docs/ARCHITECTURE.md       – full spec, diagrams, signature table, DB schema
 docs/TASKS.md              – phased checklist
 docs/releases/             – release notes per tag

@@ -33,6 +33,8 @@ public partial class MainViewModel : ObservableObject
         Parallelism = ParallelismChoices.Contains(s.Parallelism) ? s.Parallelism : 4;
         OrganizeAfterExtract = s.OrganizeAfterExtract;
         UseFileDatesAsLastResort = s.UseFileDatesAsLastResort;
+        CountryFolders = s.CountryFolders;
+        SwedishCountyFolders = s.SwedishCountyFolders;
 
         Sources.CollectionChanged += (_, _) => StartExtractCommand.NotifyCanExecuteChanged();
     }
@@ -62,6 +64,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial int Parallelism { get; set; }
     [ObservableProperty] public partial bool OrganizeAfterExtract { get; set; }
     [ObservableProperty] public partial bool UseFileDatesAsLastResort { get; set; }
+    [ObservableProperty] public partial bool CountryFolders { get; set; }
+    [ObservableProperty] public partial bool SwedishCountyFolders { get; set; }
 
     public IReadOnlyList<int> ParallelismChoices { get; } = [1, 2, 3, 4, 6, 8];
 
@@ -160,6 +164,8 @@ public partial class MainViewModel : ObservableObject
         Parallelism = Parallelism,
         OrganizeAfterExtract = OrganizeAfterExtract,
         UseFileDatesAsLastResort = UseFileDatesAsLastResort,
+        CountryFolders = CountryFolders,
+        SwedishCountyFolders = SwedishCountyFolders,
     });
 
     private static string N(long value) => value.ToString("N0", CultureInfo.CurrentCulture);

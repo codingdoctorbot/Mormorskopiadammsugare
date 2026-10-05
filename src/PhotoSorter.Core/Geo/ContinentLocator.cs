@@ -4,7 +4,9 @@ using System.Text;
 namespace PhotoSorter.Core.Geo;
 
 /// <param name="DistanceKm">0 when the point is inside the country; otherwise the distance to its coast.</param>
-public sealed record GeoMatch(string Continent, string CountryCode, string CountryName, double DistanceKm);
+/// <param name="Region">First-level region where the data has it – today Sweden's län ("Skåne län"), else null.</param>
+public sealed record GeoMatch(string Continent, string CountryCode, string CountryName, double DistanceKm,
+    string? RegionCode = null, string? Region = null);
 
 /// <summary>
 /// Offline GPS → country → continent lookup over Natural Earth polygons (ARCHITECTURE §5.3).
@@ -31,8 +33,14 @@ public sealed class ContinentLocator
 
     private readonly Part[] _parts;
 
-    private ContinentLocator(Part[] parts) =>
+    /// <summary>Region polygons per country code (Part.Country = the region's code and name).</summary>
+    private readonly Dictionary<string, Part[]> _regions;
+
+    private ContinentLocator(Part[] parts, Dictionary<string, Part[]> regions)
+    {
         _parts = [.. parts.OrderBy(p => (p.MaxLon - p.MinLon) * (p.MaxLat - p.MinLat))]; // small first: fast exits
+        _regions = regions;
+    }
 
     public static ContinentLocator Default => LazyDefault.Value;
 
@@ -62,7 +70,7 @@ public sealed class ContinentLocator
         return nearest is not null && best <= CoastalToleranceKm ? Match(nearest, lat, lon, best) : null;
     }
 
-    private static GeoMatch Match(Part part, double lat, double lon, double distanceKm)
+    private GeoMatch Match(Part part, double lat, double lon, double distanceKm)
     {
         var continent = part.Country.Code switch
         {
@@ -71,7 +79,19 @@ public sealed class ContinentLocator
             "TR" => PointInRing(EastThrace, lon, lat) ? "Europe" : "Asia",
             _ => part.Continent,
         };
-        return new GeoMatch(continent, part.Country.Code, part.Country.Name, distanceKm);
+        var region = _regions.TryGetValue(part.Country.Code, out var regions) ? LocateRegion(regions, lat, lon) : null;
+        return new GeoMatch(continent, part.Country.Code, part.Country.Name, distanceKm, region?.Code, region?.Name);
+    }
+
+    /// <summary>
+    /// The region containing the point, else the nearest one: the point is already known to be in (or just off)
+    /// this country, so an archipelago or a boat simply belongs to the closest region.
+    /// </summary>
+    private static Country? LocateRegion(Part[] regions, double lat, double lon)
+    {
+        foreach (var r in regions)
+            if (r.BoxContains(lon, lat) && r.Contains(lon, lat)) return r.Country;
+        return regions.MinBy(r => r.DistanceKm(lon, lat))?.Country;
     }
 
     private static ContinentLocator LoadEmbedded()
@@ -85,7 +105,8 @@ public sealed class ContinentLocator
     {
         using var gzip = new GZipStream(gzipped, CompressionMode.Decompress);
         using var r = new BinaryReader(gzip, Encoding.UTF8);
-        if (!r.ReadBytes(6).AsSpan().SequenceEqual("PSGEO1"u8)) throw new InvalidDataException("Not a PhotoSorter geo file.");
+        if (!r.ReadBytes(6).AsSpan().SequenceEqual("PSGEO3"u8))
+            throw new InvalidDataException("Not a PSGEO3 geo file – regenerate it with tools/GeoPrep.");
 
         var continents = new string[r.ReadInt32()];
         for (var i = 0; i < continents.Length; i++) continents[i] = r.ReadString();
@@ -99,17 +120,39 @@ public sealed class ContinentLocator
             for (var p = 0; p < partCount; p++)
             {
                 var continent = continents[r.ReadByte()];
-                var rings = new float[r.ReadInt32()][];
-                for (var i = 0; i < rings.Length; i++)
-                {
-                    var ring = new float[r.ReadInt32() * 2];
-                    for (var k = 0; k < ring.Length; k++) ring[k] = r.ReadSingle();
-                    rings[i] = ring;
-                }
-                parts.Add(new Part(country, continent, rings));
+                // Overseas parts (Réunion, French Guiana, …) carry their own code and name.
+                var (partCode, partName) = (r.ReadString(), r.ReadString());
+                var owner = partCode.Length == 0 && partName.Length == 0
+                    ? country
+                    : new Country(partCode.Length > 0 ? partCode : country.Code, partName.Length > 0 ? partName : country.Name);
+                parts.Add(new Part(owner, continent, ReadRings(r)));
             }
         }
-        return new ContinentLocator([.. parts]);
+
+        var regions = new List<(string CountryCode, Part Part)>();
+        var regionCount = r.ReadInt32();
+        for (var i = 0; i < regionCount; i++)
+        {
+            var (countryCode, region) = (r.ReadString(), new Country(r.ReadString(), r.ReadString()));
+            var partCount = r.ReadInt32();
+            for (var p = 0; p < partCount; p++) regions.Add((countryCode, new Part(region, "", ReadRings(r))));
+        }
+
+        return new ContinentLocator(
+            [.. parts],
+            regions.GroupBy(x => x.CountryCode).ToDictionary(g => g.Key, g => g.Select(x => x.Part).ToArray()));
+    }
+
+    private static float[][] ReadRings(BinaryReader r)
+    {
+        var rings = new float[r.ReadInt32()][];
+        for (var i = 0; i < rings.Length; i++)
+        {
+            var ring = new float[r.ReadInt32() * 2];
+            for (var k = 0; k < ring.Length; k++) ring[k] = r.ReadSingle();
+            rings[i] = ring;
+        }
+        return rings;
     }
 
     /// <summary>Even-odd ray casting over interleaved (lon, lat) pairs.</summary>

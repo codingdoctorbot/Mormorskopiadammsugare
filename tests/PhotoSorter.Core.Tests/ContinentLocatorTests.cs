@@ -52,10 +52,39 @@ public class ContinentLocatorTests
     [InlineData(91, 0)]           // invalid
     public void Open_ocean_and_bad_values_are_unknown(double lat, double lon) => Assert.Null(Locator.Locate(lat, lon));
 
-    [Fact]
-    public void Reports_the_country()
+    [Theory]
+    [InlineData(59.3293, 18.0686, "SE", "Sweden")]
+    [InlineData(48.8566, 2.3522, "FR", "France")]
+    [InlineData(-21.1151, 55.5364, "RE", "Réunion")]           // overseas parts get their own name…
+    [InlineData(4.9224, -52.3135, "GF", "French Guiana")]
+    [InlineData(14.6415, -61.0242, "MQ", "Martinique")]
+    [InlineData(12.15, -68.27, "BQ", "Caribbean Netherlands")] // Bonaire
+    [InlineData(40.7128, -74.0060, "US", "United States")]      // …and long official names are shortened
+    [InlineData(44.7866, 20.4489, "RS", "Serbia")]
+    [InlineData(60.10, 19.94, "AX", "Åland")]
+    public void Reports_the_country(double lat, double lon, string code, string name)
     {
-        var match = Locator.Locate(59.3293, 18.0686);
-        Assert.Equal(("SE", "Sweden"), (match?.CountryCode, match?.CountryName));
+        var match = Locator.Locate(lat, lon);
+        Assert.Equal((code, name), (match?.CountryCode, match?.CountryName));
     }
+
+    [Theory]
+    [InlineData("Stockholm", 59.3293, 18.0686, "SE-AB", "Stockholms län")]
+    [InlineData("Göteborg", 57.7089, 11.9746, "SE-O", "Västra Götalands län")]
+    [InlineData("Malmö", 55.6050, 13.0038, "SE-M", "Skåne län")]
+    [InlineData("Visby", 57.6348, 18.2948, "SE-I", "Gotlands län")]
+    [InlineData("Kiruna", 67.8558, 20.2253, "SE-BD", "Norrbottens län")]
+    [InlineData("Örebro", 59.2741, 15.2066, "SE-T", "Örebro län")]
+    [InlineData("Åre", 63.3990, 13.0815, "SE-Z", "Jämtlands län")]
+    [InlineData("Sandhamn, outer archipelago", 59.2870, 18.9120, "SE-AB", "Stockholms län")]
+    [InlineData("Boat in Kattegat off Göteborg", 57.70, 11.70, "SE-O", "Västra Götalands län")]
+    public void Finds_the_swedish_county(string place, double lat, double lon, string code, string county)
+    {
+        var match = Locator.Locate(lat, lon);
+        Assert.True(match is not null, place);
+        Assert.Equal((code, county), (match.RegionCode, match.Region));
+    }
+
+    [Fact]
+    public void Only_sweden_has_regions() => Assert.Null(Locator.Locate(48.8566, 2.3522)?.Region);
 }

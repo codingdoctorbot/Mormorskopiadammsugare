@@ -291,6 +291,13 @@ both, like a phone gallery. There is no separate video tree.
 ├─ Extracted\                    ← Phase 1 staging (empty after organize, except failures)
 └─ _Mormorskopiadammsugare\                 ← catalog.db, logs
 ```
+**Optional levels** (Organize tab; switching later just moves files on the next Organize):
+- *Country folders*: `Europe\Sweden\2015\` – short country names from GeoPrep's friendly-name list,
+  overseas territories named on their own (`Africa\Réunion\`). No country level under `_Unknown location`.
+- *Swedish counties* (needs country folders): `Europe\Sweden\Skåne län\2015\` for photos located in
+  Sweden only – Natural Earth admin-1 1:10m, 21 län with Swedish names; a point outside every county
+  polygon (archipelago, boat) takes the nearest county.
+
 | Continent known? | Year known? | Folder |
 |---|---|---|
 | ✅ | ✅ | `Europe\2015\` |

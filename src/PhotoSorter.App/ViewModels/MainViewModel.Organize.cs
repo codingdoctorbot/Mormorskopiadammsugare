@@ -69,6 +69,15 @@ public partial class MainViewModel
     partial void OnDestinationChanged(string value) =>
         DiscardPlan("Destination changed – press Preview again.");
 
+    partial void OnCountryFoldersChanged(bool value) =>
+        DiscardPlan("Folder layout changed – press Preview again. Already sorted files will be moved to the new layout.");
+
+    partial void OnSwedishCountyFoldersChanged(bool value) =>
+        DiscardPlan("Folder layout changed – press Preview again. Already sorted files will be moved to the new layout.");
+
+    partial void OnUseFileDatesAsLastResortChanged(bool value) =>
+        DiscardPlan("Option changed – press Preview again.");
+
     /// <summary>Preview (and, after an extract with "organize automatically", apply straight away).</summary>
     private async Task RunOrganizeAsync(bool applyWithoutPreview)
     {
@@ -80,6 +89,8 @@ public partial class MainViewModel
             {
                 Destination = Destination,
                 UseFileDatesAsLastResort = UseFileDatesAsLastResort,
+                CountryFolders = CountryFolders,
+                SwedishCountyFolders = SwedishCountyFolders,
                 Parallelism = Parallelism,
             };
             OrganizeStatus = "Reading dates and GPS positions…";
@@ -129,21 +140,33 @@ public partial class MainViewModel
         OrganizeCommand.NotifyCanExecuteChanged();
     }
 
+    /// <summary>
+    /// Builds one tree level from the first key, recursing into the rest. A null key (e.g. no country level
+    /// for _Unknown location) skips that level. Folders starting with "_" (unknown) sort last.
+    /// </summary>
+    private static List<BucketNode> TreeLevel(IEnumerable<BucketCount> buckets, Func<BucketCount, string?>[] keys)
+    {
+        if (keys.Length == 0) return [];
+        var withKey = buckets.Where(b => keys[0](b) is not null).ToList();
+        var skipped = buckets.Where(b => keys[0](b) is null).ToList();
+        var nodes = withKey
+            .GroupBy(b => keys[0](b)!)
+            .OrderBy(g => g.Key.StartsWith('_'))
+            .ThenBy(g => g.Key, StringComparer.CurrentCulture)
+            .Select(g => new BucketNode(g.Key, g.Sum(b => b.Count), g.Sum(b => b.Bytes), TreeLevel(g, keys[1..])))
+            .ToList();
+        return skipped.Count > 0 ? [.. nodes, .. TreeLevel(skipped, keys[1..])] : nodes;
+    }
+
     private void SetPlan(OrganizePlan plan)
     {
         _plan = plan;
         OrganizeCommand.NotifyCanExecuteChanged();
 
         Buckets.Clear();
-        foreach (var group in plan.Buckets
-                     .GroupBy(b => b.Location)
-                     .OrderBy(g => g.Key.StartsWith('_'))   // real continents first, unknown last
-                     .ThenBy(g => g.Key, StringComparer.CurrentCulture))
-        {
-            var years = group.OrderBy(b => b.Year.StartsWith('_')).ThenBy(b => b.Year, StringComparer.Ordinal)
-                .Select(b => new BucketNode(b.Year, b.Count, b.Bytes)).ToList();
-            Buckets.Add(new BucketNode(group.Key, group.Sum(b => b.Count), group.Sum(b => b.Bytes), years));
-        }
+        // Continent → (Country → (Län →)) Year; levels a bucket doesn't have are simply skipped.
+        foreach (var node in TreeLevel(plan.Buckets, [b => b.Location, b => b.Country, b => b.Region, b => b.Year]))
+            Buckets.Add(node);
 
         var missing = plan.Missing > 0 ? $" {Files(plan.Missing)} in the catalog are missing from the destination." : "";
         OrganizeStatus = plan.TotalFiles == 0

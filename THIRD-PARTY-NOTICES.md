@@ -12,6 +12,6 @@ components below; each keeps its own license.
 | [SQLite](https://sqlite.org) | (via SQLitePCLRaw) | Public domain | – |
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | 8.4.2 | MIT | © .NET Foundation and Contributors |
 | [.NET runtime and WPF](https://github.com/dotnet) (self-contained exe) | 10.0 | MIT | © .NET Foundation and Contributors |
-| [Natural Earth](https://www.naturalearthdata.com) Admin-0 countries 1:50m (`src/PhotoSorter.Core/Geo/countries.gz`) | 5.x | Public domain | – |
+| [Natural Earth](https://www.naturalearthdata.com) Admin-0 countries 1:50m + Admin-1 regions 1:10m, Sweden only (`src/PhotoSorter.Core/Geo/countries.gz`) | 5.x | Public domain | – |
 
 The Apache-2.0 license text: https://www.apache.org/licenses/LICENSE-2.0

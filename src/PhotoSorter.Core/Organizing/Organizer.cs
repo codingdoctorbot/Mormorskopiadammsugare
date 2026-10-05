@@ -17,6 +17,12 @@ public sealed record OrganizeOptions
     /// <summary>Use the file's modified date when nothing else is known. Off by default: backups reset it.</summary>
     public bool UseFileDatesAsLastResort { get; init; }
 
+    /// <summary><c>Continent\Country\Year</c> instead of <c>Continent\Year</c>. Switching later just moves files.</summary>
+    public bool CountryFolders { get; init; }
+
+    /// <summary>With country folders: Swedish photos get a county level, <c>Europe\Sweden\Skåne län\Year</c>.</summary>
+    public bool SwedishCountyFolders { get; init; }
+
     public int Parallelism { get; init; } = 4;
 }
 
@@ -34,7 +40,9 @@ public sealed record OrganizeProgress(OrganizePhase Phase, int Done, int Total, 
 public sealed record PlannedMove(long MediaId, string FromRelative, string ToDirectoryRelative, string BaseName);
 
 /// <summary>One destination folder in the preview, e.g. Europe\2015 – 1 204 files.</summary>
-public sealed record BucketCount(string Location, string Year, int Count, long Bytes);
+/// <param name="Country">Country folder, when country folders are on and the location is known.</param>
+/// <param name="Region">Region folder (Swedish län), when that option is on and the photo is from Sweden.</param>
+public sealed record BucketCount(string Location, string? Country, string? Region, string Year, int Count, long Bytes);
 
 public sealed record OrganizePlan(
     string Destination,
@@ -46,7 +54,11 @@ public sealed record OrganizePlan(
 
 public sealed record OrganizeResult(RunOutcome Outcome, int Moved, int Errors, string? LogPath, string? ErrorMessage);
 
-/// <summary>The four kinds of destination folder (ARCHITECTURE §5.1).</summary>
+/// <summary>
+/// The destination folders (ARCHITECTURE §5.1): <c>Continent\Year</c>, or <c>Continent\Country\Year</c>
+/// with country folders on (<c>Europe\Sweden\Skåne län\Year</c> with Swedish counties on), plus
+/// <c>_Unknown location\Year</c> and the <c>_Unknown year</c> fallbacks.
+/// </summary>
 public static class FolderLayout
 {
     public const string UnknownLocation = "_Unknown location";
@@ -54,7 +66,23 @@ public static class FolderLayout
 
     public static string LocationFolder(string? continent) => continent ?? UnknownLocation;
     public static string YearFolder(int? year) => year?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? UnknownYear;
-    public static string RelativeDirectory(string? continent, int? year) => Path.Combine(LocationFolder(continent), YearFolder(year));
+
+    /// <summary>The country folder, or null when there is no country level (option off, or location unknown).</summary>
+    public static string? CountryFolder(string? continent, string? country, bool countryFolders) =>
+        countryFolders && continent is not null && !string.IsNullOrWhiteSpace(country) ? NameResolver.Sanitize(country) : null;
+
+    /// <summary>The region folder, only below a country folder.</summary>
+    public static string? RegionFolder(string? countryFolder, string? region) =>
+        countryFolder is not null && !string.IsNullOrWhiteSpace(region) ? NameResolver.Sanitize(region) : null;
+
+    public static string RelativeDirectory(string? continent, int? year) => RelativeDirectory(continent, null, null, year, false);
+
+    public static string RelativeDirectory(string? continent, string? country, string? region, int? year, bool countryFolders)
+    {
+        var countryFolder = CountryFolder(continent, country, countryFolders);
+        string?[] levels = [LocationFolder(continent), countryFolder, RegionFolder(countryFolder, region), YearFolder(year)];
+        return Path.Combine([.. levels.OfType<string>()]);
+    }
 }
 
 /// <summary>
@@ -105,7 +133,7 @@ public sealed class Organizer(ContinentLocator? locator = null)
         var sources = db.LoadSources();
         var now = DateTime.Now;
         var moves = new List<PlannedMove>();
-        var buckets = new Dictionary<(string Location, string Year), (int Count, long Bytes)>();
+        var buckets = new Dictionary<(string Location, string? Country, string? Region, string Year), (int Count, long Bytes)>();
         int inPlace = 0, missing = 0;
 
         using (var tx = db.BeginTransaction())
@@ -132,10 +160,13 @@ public sealed class Organizer(ContinentLocator? locator = null)
                 var geo = row is { Latitude: { } lat, Longitude: { } lon } ? _locator.Locate(lat, lon) : null;
                 db.SaveResolution(row.Id, year.Year, year.Source, geo?.CountryCode, geo?.Continent);
 
-                var key = (FolderLayout.LocationFolder(geo?.Continent), FolderLayout.YearFolder(year.Year));
+                var region = options.SwedishCountyFolders && geo?.CountryCode == "SE" ? geo.Region : null;
+                var country = FolderLayout.CountryFolder(geo?.Continent, geo?.CountryName, options.CountryFolders);
+                var key = (FolderLayout.LocationFolder(geo?.Continent), country, FolderLayout.RegionFolder(country, region),
+                    FolderLayout.YearFolder(year.Year));
                 buckets[key] = buckets.TryGetValue(key, out var b) ? (b.Count + 1, b.Bytes + row.Size) : (1, row.Size);
 
-                var target = FolderLayout.RelativeDirectory(geo?.Continent, year.Year);
+                var target = FolderLayout.RelativeDirectory(geo?.Continent, geo?.CountryName, region, year.Year, options.CountryFolders);
                 var current = Path.GetDirectoryName(row.DestPath) ?? "";
                 if (string.Equals(current, target, StringComparison.OrdinalIgnoreCase))
                 {
@@ -158,8 +189,10 @@ public sealed class Organizer(ContinentLocator? locator = null)
         }
 
         var bucketList = buckets
-            .Select(kv => new BucketCount(kv.Key.Location, kv.Key.Year, kv.Value.Count, kv.Value.Bytes))
+            .Select(kv => new BucketCount(kv.Key.Location, kv.Key.Country, kv.Key.Region, kv.Key.Year, kv.Value.Count, kv.Value.Bytes))
             .OrderBy(x => x.Location, StringComparer.Ordinal)
+            .ThenBy(x => x.Country, StringComparer.Ordinal)
+            .ThenBy(x => x.Region, StringComparer.Ordinal)
             .ThenBy(x => x.Year, StringComparer.Ordinal)
             .ToList();
         progress?.Report(new(OrganizePhase.Finished, rows.Count, rows.Count, 0, null));

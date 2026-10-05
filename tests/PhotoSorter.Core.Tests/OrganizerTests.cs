@@ -79,8 +79,8 @@ public class OrganizerTests : IDisposable
             @"_Unknown location\2016\VID_20160301_101010.mp4",
             @"_Unknown location\_Unknown year\scan.jpg",
         ], SortedFiles());
-        Assert.Contains(plan.Buckets, b => b is { Location: "Europe", Country: "Sweden", Year: "2015", Count: 1 });
-        Assert.Contains(plan.Buckets, b => b is { Location: "_Unknown location", Country: null, Year: "2009" });
+        Assert.Contains(plan.Buckets, b => b is { Directory: @"Europe\Sweden\2015", Count: 1 });
+        Assert.Contains(plan.Buckets, b => b.Directory == @"_Unknown location\2009");
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class OrganizerTests : IDisposable
         Assert.Contains(@"Europe\Sweden\Skåne län\2016\malmo.jpg", SortedFiles());
         Assert.Contains(@"Asia\Japan\_Unknown year\tokyo.jpg", SortedFiles());        // other countries: no county level
         Assert.Contains(@"_Unknown location\2009\DSC_0042.jpg", SortedFiles());
-        Assert.Contains(plan.Buckets, b => b is { Country: "Sweden", Region: "Skåne län", Year: "2016", Count: 1 });
+        Assert.Contains(plan.Buckets, b => b is { Directory: @"Europe\Sweden\Skåne län\2016", Count: 1 });
     }
 
     [Fact]
@@ -144,8 +144,8 @@ public class OrganizerTests : IDisposable
         var plan = await new Organizer().AnalyzeAsync(new OrganizeOptions { Destination = Dest }, null, Ct);
 
         Assert.Equal(6, plan.Moves.Count);
-        Assert.Contains(plan.Buckets, b => b is { Location: "Europe", Year: "2015", Count: 1 });
-        Assert.Contains(plan.Buckets, b => b is { Location: "_Unknown location", Year: "_Unknown year", Count: 1 });
+        Assert.Contains(plan.Buckets, b => b is { Directory: @"Europe\2015", Count: 1 });
+        Assert.Contains(plan.Buckets, b => b is { Directory: @"_Unknown location\_Unknown year", Count: 1 });
         Assert.All(SortedFiles(), f => Assert.StartsWith("Extracted", f));
     }
 

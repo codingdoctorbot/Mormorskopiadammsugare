@@ -23,6 +23,12 @@ public sealed record OrganizeOptions
     /// <summary>With country folders: Swedish photos get a county level, <c>Europe\Sweden\Skåne län\Year</c>.</summary>
     public bool SwedishCountyFolders { get; init; }
 
+    /// <summary>
+    /// Best-effort sorting inside the unknown folders: a probable place from GPS photos taken at the same time
+    /// (<c>~Sweden</c>), the original album folder, and screenshots/graphics/downloads set apart. See <see cref="BestGuess"/>.
+    /// </summary>
+    public bool BestGuessUnknowns { get; init; }
+
     public int Parallelism { get; init; } = 4;
 }
 
@@ -37,12 +43,22 @@ public enum OrganizePhase
 public sealed record OrganizeProgress(OrganizePhase Phase, int Done, int Total, int Errors, string? CurrentPath);
 
 /// <param name="BaseName">File name (without extension) to use – the best name among all copies of the file.</param>
-public sealed record PlannedMove(long MediaId, string FromRelative, string ToDirectoryRelative, string BaseName);
+/// <param name="Note">Why it goes there, when that's a best guess (written to the log).</param>
+public sealed record PlannedMove(long MediaId, string FromRelative, string ToDirectoryRelative, string BaseName, string? Note = null);
 
 /// <summary>One destination folder in the preview, e.g. Europe\2015 – 1 204 files.</summary>
-/// <param name="Country">Country folder, when country folders are on and the location is known.</param>
-/// <param name="Region">Region folder (Swedish län), when that option is on and the photo is from Sweden.</param>
-public sealed record BucketCount(string Location, string? Country, string? Region, string Year, int Count, long Bytes);
+/// <param name="Directory">Relative folder, e.g. <c>Europe\Sweden\2015</c> or <c>_Unknown location\2018\~Sweden</c>.</param>
+public sealed record BucketCount(string Directory, int Count, long Bytes)
+{
+    /// <summary>The folder's levels, top first.</summary>
+    public string[] Levels => Directory.Split(Path.DirectorySeparatorChar);
+}
+
+/// <summary>How much best-guess sorting did (all 0 when it's off).</summary>
+public sealed record GuessSummary(int PlaceGuessed, int InAlbums, int Screenshots, int Graphics, int Downloads)
+{
+    public static readonly GuessSummary None = new(0, 0, 0, 0, 0);
+}
 
 public sealed record OrganizePlan(
     string Destination,
@@ -50,7 +66,8 @@ public sealed record OrganizePlan(
     IReadOnlyList<BucketCount> Buckets,
     int TotalFiles,
     int AlreadyInPlace,
-    int Missing);
+    int Missing,
+    GuessSummary? Guesses = null);
 
 public sealed record OrganizeResult(RunOutcome Outcome, int Moved, int Errors, string? LogPath, string? ErrorMessage);
 
@@ -128,76 +145,136 @@ public sealed class Organizer(ContinentLocator? locator = null)
             tx.Commit();
         }
 
-        // 2. Decide continent + year for every file.
+        // 2. Year and GPS place for every file.
         progress?.Report(new(OrganizePhase.Sorting, 0, rows.Count, 0, null));
         var sources = db.LoadSources();
+        var sourceRoots = db.LoadSourceRoots();
         var now = DateTime.Now;
-        var moves = new List<PlannedMove>();
-        var buckets = new Dictionary<(string Location, string? Country, string? Region, string Year), (int Count, long Bytes)>();
-        int inPlace = 0, missing = 0;
+        var resolved = new List<Resolved>(rows.Count);
+        var missing = 0;
+        foreach (var row0 in rows)
+        {
+            ct.ThrowIfCancellationRequested();
+            var row = fresh.TryGetValue(row0.Id, out var m)
+                ? row0 with { DateTaken = m.DateTaken, DateSource = m.DateSource, Latitude = m.Latitude, Longitude = m.Longitude, CameraMake = m.CameraMake }
+                : row0;
+            if (!File.Exists(layout.ToFull(row.DestPath)))
+            {
+                missing++;
+                continue;
+            }
 
+            var src = sources[row.Id].ToList();
+            // A file can lose all its source paths (its source was edited and re-extracted as new content);
+            // then its own current path is the best name/folder evidence left.
+            string[] paths = src.Count > 0 ? [.. src.Select(s => s.Path)] : [row.DestPath];
+            var year = DateResolver.Resolve(row.DateTaken, row.DateSource, paths,
+                src.Select(s => s.MtimeUtc), options.UseFileDatesAsLastResort, now);
+            var geo = row is { Latitude: { } lat, Longitude: { } lon } ? _locator.Locate(lat, lon) : null;
+            resolved.Add(new Resolved(row, paths, year, geo));
+        }
+
+        // 3. Target folder per file – with best guesses inside the unknown folders when enabled.
+        var guesser = options.BestGuessUnknowns
+            ? new BestGuess.PlaceGuesser(resolved
+                .Where(r => r.Geo is not null && r.Row.DateTaken is not null && BestGuess.IsCaptureTime(r.Row.DateSource))
+                .Select(r => new BestGuess.Anchor(r.Row.DateTaken!.Value, PlaceLabel(r.Geo!, options))))
+            : null;
+        var targets = resolved.Select(r => TargetFor(r, options, guesser, sourceRoots)).ToList();
+
+        // An album folder only pays off when several files share it.
+        var albumSizes = targets
+            .Where(t => t.Album is not null)
+            .GroupBy(t => (Dir: t.Dir.ToUpperInvariant(), Album: t.Album!.ToUpperInvariant()))
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // 4. Save, plan moves, count buckets.
+        var moves = new List<PlannedMove>();
+        var buckets = new Dictionary<string, (int Count, long Bytes)>(StringComparer.OrdinalIgnoreCase);
+        int inPlace = 0, placeGuessed = 0, inAlbums = 0, screenshots = 0, graphics = 0, downloads = 0;
         using (var tx = db.BeginTransaction())
         {
-            foreach (var row0 in rows)
+            foreach (var t0 in targets)
             {
                 ct.ThrowIfCancellationRequested();
-                var row = fresh.TryGetValue(row0.Id, out var m)
-                    ? row0 with { DateTaken = m.DateTaken, DateSource = m.DateSource, Latitude = m.Latitude, Longitude = m.Longitude }
-                    : row0;
+                var useAlbum = t0.Album is not null &&
+                    albumSizes[(t0.Dir.ToUpperInvariant(), t0.Album.ToUpperInvariant())] >= BestGuess.MinAlbumSize;
+                var t = useAlbum ? t0 with { Dir = Path.Combine(t0.Dir, NameResolver.Sanitize(t0.Album!)) } : t0 with { Album = null };
+                var (row, geo, year) = (t.R.Row, t.R.Geo, t.R.Year);
 
-                if (!File.Exists(layout.ToFull(row.DestPath)))
+                db.SaveResolution(row.Id, year.Year, year.Source, geo?.CountryCode, geo?.Continent);
+                db.SaveGuess(row.Id, t.Place, t.Reason, t.Album, t.Category);
+                if (t.Place is not null) placeGuessed++;
+                if (t.Album is not null) inAlbums++;
+                switch (t.Category)
                 {
-                    missing++;
-                    continue;
+                    case BestGuess.Screenshots: screenshots++; break;
+                    case BestGuess.Graphics: graphics++; break;
+                    case BestGuess.Downloads: downloads++; break;
                 }
 
-                var src = sources[row.Id].ToList();
-                // A file can lose all its source paths (its source was edited and re-extracted as new content);
-                // then its own current path is the best name/folder evidence left.
-                string[] paths = src.Count > 0 ? [.. src.Select(s => s.Path)] : [row.DestPath];
-                var year = DateResolver.Resolve(row.DateTaken, row.DateSource, paths,
-                    src.Select(s => s.MtimeUtc), options.UseFileDatesAsLastResort, now);
-                var geo = row is { Latitude: { } lat, Longitude: { } lon } ? _locator.Locate(lat, lon) : null;
-                db.SaveResolution(row.Id, year.Year, year.Source, geo?.CountryCode, geo?.Continent);
+                buckets[t.Dir] = buckets.TryGetValue(t.Dir, out var b) ? (b.Count + 1, b.Bytes + row.Size) : (1, row.Size);
 
-                var region = options.SwedishCountyFolders && geo?.CountryCode == "SE" ? geo.Region : null;
-                var country = FolderLayout.CountryFolder(geo?.Continent, geo?.CountryName, options.CountryFolders);
-                var key = (FolderLayout.LocationFolder(geo?.Continent), country, FolderLayout.RegionFolder(country, region),
-                    FolderLayout.YearFolder(year.Year));
-                buckets[key] = buckets.TryGetValue(key, out var b) ? (b.Count + 1, b.Bytes + row.Size) : (1, row.Size);
-
-                var target = FolderLayout.RelativeDirectory(geo?.Continent, geo?.CountryName, region, year.Year, options.CountryFolders);
                 var current = Path.GetDirectoryName(row.DestPath) ?? "";
-                if (string.Equals(current, target, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(current, t.Dir, StringComparison.OrdinalIgnoreCase))
                 {
                     inPlace++;
                 }
                 else
                 {
                     // Moving anyway, so take the best name among all copies ("Nokia 6.1" beats "FILE0043").
-                    var baseName = NameResolver.PreferredBaseName(paths.Select(Path.GetFileNameWithoutExtension).OfType<string>());
-                    moves.Add(new PlannedMove(row.Id, row.DestPath, target, baseName));
-                }
-
-                if (clock.Elapsed > ReportEvery)
-                {
-                    clock.Restart();
-                    progress?.Report(new(OrganizePhase.Sorting, inPlace + moves.Count + missing, rows.Count, 0, row.DestPath));
+                    var baseName = NameResolver.PreferredBaseName(t.R.Paths.Select(Path.GetFileNameWithoutExtension).OfType<string>());
+                    moves.Add(new PlannedMove(row.Id, row.DestPath, t.Dir, baseName, t.Reason));
                 }
             }
             tx.Commit();
         }
 
         var bucketList = buckets
-            .Select(kv => new BucketCount(kv.Key.Location, kv.Key.Country, kv.Key.Region, kv.Key.Year, kv.Value.Count, kv.Value.Bytes))
-            .OrderBy(x => x.Location, StringComparer.Ordinal)
-            .ThenBy(x => x.Country, StringComparer.Ordinal)
-            .ThenBy(x => x.Region, StringComparer.Ordinal)
-            .ThenBy(x => x.Year, StringComparer.Ordinal)
+            .Select(kv => new BucketCount(kv.Key, kv.Value.Count, kv.Value.Bytes))
+            .OrderBy(x => x.Directory, StringComparer.Ordinal)
             .ToList();
         progress?.Report(new(OrganizePhase.Finished, rows.Count, rows.Count, 0, null));
-        return new OrganizePlan(layout.Root, moves, bucketList, rows.Count, inPlace, missing);
+        return new OrganizePlan(layout.Root, moves, bucketList, rows.Count, inPlace, missing,
+            new GuessSummary(placeGuessed, inAlbums, screenshots, graphics, downloads));
     }
+
+    /// <summary>The label a place guess uses: the country with country folders on, else the continent.</summary>
+    private static string PlaceLabel(GeoMatch geo, OrganizeOptions options) =>
+        options.CountryFolders ? geo.CountryName : geo.Continent;
+
+    /// <summary>Where one file goes, before the "enough files for an album" check.</summary>
+    private static Target TargetFor(Resolved r, OrganizeOptions options, BestGuess.PlaceGuesser? guesser, IReadOnlyCollection<string> sourceRoots)
+    {
+        var region = options.SwedishCountyFolders && r.Geo?.CountryCode == "SE" ? r.Geo.Region : null;
+        var dir = FolderLayout.RelativeDirectory(r.Geo?.Continent, r.Geo?.CountryName, region, r.Year.Year, options.CountryFolders);
+        if (guesser is null) return new Target(r, dir, null, null, null, null);
+
+        string? place = null, reason = null, category = null;
+        if (r.Geo is null)
+        {
+            category = BestGuess.Category(r.Row.Kind, r.Row.Format, r.Row.CameraMake, r.Paths);
+            if (category is not null)
+            {
+                dir = Path.Combine(FolderLayout.UnknownLocation, category, FolderLayout.YearFolder(r.Year.Year));
+                reason = category.TrimStart('_');
+            }
+            else if (r.Row.DateTaken is { } taken && BestGuess.IsCaptureTime(r.Row.DateSource) && guesser.Guess(taken) is { } guess)
+            {
+                place = guess.Place;
+                reason = $"Probably {guess.Place}: taken within {BestGuess.PlaceWindow.TotalHours:0} h of " +
+                         $"{guess.Witnesses} GPS photo{(guess.Witnesses == 1 ? "" : "s")} from there";
+                dir = Path.Combine(dir, BestGuess.GuessPrefix + NameResolver.Sanitize(guess.Place));
+            }
+        }
+        // Album folders help wherever something is unknown (but not inside the non-photo buckets).
+        var album = category is null && (r.Geo is null || r.Year.Year is null) ? BestGuess.AlbumFolder(r.Paths, sourceRoots) : null;
+        return new Target(r, dir, place, reason, album, category);
+    }
+
+    private sealed record Resolved(MediaRow Row, string[] Paths, YearResolution Year, GeoMatch? Geo);
+
+    private sealed record Target(Resolved R, string Dir, string? Place, string? Reason, string? Album, string? Category);
 
     /// <summary>Moves files according to the plan (same drive → instant renames, no extra space).</summary>
     public async Task<OrganizeResult> ApplyAsync(OrganizePlan plan, IProgress<OrganizeProgress>? progress = null, CancellationToken ct = default)
@@ -251,7 +328,7 @@ public sealed class Organizer(ContinentLocator? locator = null)
                             throw new IOException("Could not update the catalog, file left in place: " + ex.Message, ex);
                         }
                         moved++;
-                        log.Write("Moved", move.FromRelative, relative);
+                        log.Write("Moved", move.FromRelative, relative, message: move.Note);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {

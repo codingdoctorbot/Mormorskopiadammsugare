@@ -6,6 +6,29 @@ the history behind it. Keep entries short and free of personal details.
 
 ---
 
+## 2026-10-05 · Session 8 – Best guesses inside the unknown folders
+
+**Done**
+- `Organizing/BestGuess.cs` + organizer in four passes: (1) year and GPS place per file, (2) GPS anchors with
+  capture times, (3) target folder incl. guesses, (4) album size rule, save, plan.
+- Three techniques, all inside `_Unknown…`: `~Place` from GPS photos within ±3 h (must agree), album folders
+  (≥3 files), `_Screenshots` / `_Graphics` / `_Downloads`. Option in the UI (on by default), summary in the
+  status line, reason in the organize log, catalog schema v2 with guess columns (v1 upgrades in place).
+- Preview tree is now built from folder paths (any depth). 191 tests.
+
+**Decisions**
+- Guesses never leave the unknown folders and are always marked (`~` / `_`) – trusted folders stay trusted.
+- Place guesses only from real capture times (EXIF, QuickTime, AVI), never file dates; disagreement → no guess.
+- Album folders only for ≥3 files; never the user's source folders, backups, devices, user profiles, or our
+  own folders.
+
+**Lessons**
+- The 10 GB test pile caught three album mistakes the unit tests missed: the **source folder** itself
+  ("pile"), **Downloads** as an album, and **device names** ("Camera SD card (2)"). Also: a photo is only a
+  "download" if *every* copy is in Downloads. Realistic data before shipping pays off.
+- Inline Python in bash heredocs keeps breaking on backslashes (octal escapes like `\201`). Write helper
+  scripts to a file, use raw strings or `chr(92)`, or use the editor directly.
+
 ## 2026-10-05 · Session 7 – First real-world run, docs
 
 **Done**

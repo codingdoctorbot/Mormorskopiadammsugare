@@ -17,7 +17,9 @@ public sealed record MediaRow(
     DateTime? DateTaken,
     string? DateSource,
     double? Latitude,
-    double? Longitude);
+    double? Longitude,
+    MediaFormat Format,
+    string? CameraMake);
 
 public sealed record SourceRow(long MediaId, string Path, DateTime MtimeUtc);
 
@@ -33,7 +35,7 @@ public enum CatalogStatus
 /// </summary>
 public sealed class CatalogDb : IDisposable
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
 
     private readonly SqliteConnection _conn;
 
@@ -92,6 +94,18 @@ public sealed class CatalogDb : IDisposable
             throw new InvalidOperationException(
                 $"catalog.db was created by a newer PhotoSorter (schema {version}). Please update the app.");
         if (version == SchemaVersion) return;
+        if (version == 1)
+        {
+            // v2: best-guess sorting inside the unknown folders records what it guessed and why.
+            Execute("""
+                ALTER TABLE media ADD COLUMN guess_place  TEXT;
+                ALTER TABLE media ADD COLUMN guess_reason TEXT;
+                ALTER TABLE media ADD COLUMN album        TEXT;
+                ALTER TABLE media ADD COLUMN category     TEXT;
+                """);
+            Execute($"PRAGMA user_version = {SchemaVersion};");
+            return;
+        }
 
         Execute("""
             CREATE TABLE IF NOT EXISTS media (
@@ -113,7 +127,11 @@ public sealed class CatalogDb : IDisposable
               year           INTEGER,
               year_source    TEXT,
               country        TEXT,
-              continent      TEXT
+              continent      TEXT,
+              guess_place    TEXT,
+              guess_reason   TEXT,
+              album          TEXT,
+              category       TEXT
             );
             CREATE TABLE IF NOT EXISTS sources (
               id          INTEGER PRIMARY KEY,
@@ -201,11 +219,36 @@ public sealed class CatalogDb : IDisposable
 
     // ---------- Organize ----------
 
+    /// <summary>Every source folder any extract run used (from the runs' saved options).</summary>
+    public List<string> LoadSourceRoots()
+    {
+        var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var cmd = Command("SELECT options_json FROM runs WHERE kind LIKE 'extract%' AND options_json IS NOT NULL;");
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+        {
+            try
+            {
+                using var json = System.Text.Json.JsonDocument.Parse(r.GetString(0));
+                if (json.RootElement.TryGetProperty(nameof(ScanOptions.Sources), out var sources))
+                    foreach (var s in sources.EnumerateArray())
+                        if (s.GetString() is { Length: > 0 } path)
+                            roots.Add(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)));
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // an unreadable old entry only means fewer known roots
+            }
+        }
+        return [.. roots];
+    }
+
     public List<MediaRow> LoadCopiedMedia()
     {
         var rows = new List<MediaRow>();
         using var cmd = Command($"""
-            SELECT id, size, kind, dest_path, meta_version, date_taken, date_source, latitude, longitude
+            SELECT id, size, kind, dest_path, meta_version, date_taken, date_source, latitude, longitude,
+                   format, camera_make
             FROM media WHERE status = '{CatalogStatus.Copied}' AND dest_path IS NOT NULL ORDER BY id;
             """);
         using var r = cmd.ExecuteReader();
@@ -220,7 +263,9 @@ public sealed class CatalogDb : IDisposable
                 r.IsDBNull(5) ? null : DateTime.Parse(r.GetString(5), CultureInfo.InvariantCulture),
                 r.IsDBNull(6) ? null : r.GetString(6),
                 r.IsDBNull(7) ? null : r.GetDouble(7),
-                r.IsDBNull(8) ? null : r.GetDouble(8)));
+                r.IsDBNull(8) ? null : r.GetDouble(8),
+                Enum.TryParse<MediaFormat>(r.GetString(9), out var format) ? format : MediaFormat.Jpeg,
+                r.IsDBNull(10) ? null : r.GetString(10)));
         }
         return rows;
     }
@@ -256,6 +301,17 @@ public sealed class CatalogDb : IDisposable
             WHERE id = $id;
             """,
             ("$year", year), ("$ysrc", yearSource), ("$country", country), ("$continent", continent), ("$id", id));
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>What best-guess sorting decided for a file (all null when it guessed nothing).</summary>
+    public void SaveGuess(long id, string? place, string? reason, string? album, string? category)
+    {
+        using var cmd = Command("""
+            UPDATE media SET guess_place = $place, guess_reason = $reason, album = $album, category = $category
+            WHERE id = $id;
+            """,
+            ("$place", place), ("$reason", reason), ("$album", album), ("$category", category), ("$id", id));
         cmd.ExecuteNonQuery();
     }
 

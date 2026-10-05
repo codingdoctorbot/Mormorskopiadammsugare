@@ -29,6 +29,9 @@ Destination\
 ├─ Europe\2015\ …            ← GPS says Europe, photo taken 2015   (or Europe\Italy\2015\ …)
 ├─ Asia\_Unknown year\ …      ← GPS known, no date anywhere
 ├─ _Unknown location\2009\ …  ← no GPS, but "Rome 2009" folder / date in file name
+├─ _Unknown location\2018\~Sweden\ …         ← best guess: GPS photos from the same hours agree
+├─ _Unknown location\2018\Midsommar 2018\ …  ← best guess: the original album folder
+├─ _Unknown location\_Screenshots\ …         ← screenshots, graphics and downloads set apart
 ├─ _Unknown location\_Unknown year\ …
 └─ _Mormorskopiadammsugare\   ← catalog + CSV logs of every run
 ```
@@ -37,6 +40,9 @@ Also good to know:
 - **Same name, different photo?** Both are kept (`IMG_0001.jpg`, `IMG_0001 (2).jpg`).
 - **Same photo, many names?** One copy, with the best name among them – `Midsommar.jpg` beats
   `FILE0043.jpg`, and `(1)` / `- Copy` / `kopia` lose.
+- **No GPS or no date?** Those files stay in the `_Unknown…` folders but get a **best attempt**: a probable
+  place (`~Sweden`) when GPS photos taken within 3 hours agree, the original album folder, and screenshots,
+  graphics and downloads in folders of their own. Guesses are marked with `~` and can be switched off.
 - **Interrupted?** Press Start again – files already done are skipped, so it simply continues.
 - **Skipped on purpose:** tiny thumbnails, app caches (`AppData`, browser caches), `Windows\`,
   macOS `._` files, `Thumbs.db`, and files that are named like photos but aren't (logged as *suspect*).

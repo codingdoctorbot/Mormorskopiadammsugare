@@ -72,6 +72,9 @@ public partial class MainViewModel
     partial void OnCountryFoldersChanged(bool value) =>
         DiscardPlan("Folder layout changed – press Preview again. Already sorted files will be moved to the new layout.");
 
+    partial void OnBestGuessUnknownsChanged(bool value) =>
+        DiscardPlan("Option changed – press Preview again. Already sorted files will be moved to the new layout.");
+
     partial void OnSwedishCountyFoldersChanged(bool value) =>
         DiscardPlan("Folder layout changed – press Preview again. Already sorted files will be moved to the new layout.");
 
@@ -91,6 +94,7 @@ public partial class MainViewModel
                 UseFileDatesAsLastResort = UseFileDatesAsLastResort,
                 CountryFolders = CountryFolders,
                 SwedishCountyFolders = SwedishCountyFolders,
+                BestGuessUnknowns = BestGuessUnknowns,
                 Parallelism = Parallelism,
             };
             OrganizeStatus = "Reading dates and GPS positions…";
@@ -141,21 +145,36 @@ public partial class MainViewModel
     }
 
     /// <summary>
-    /// Builds one tree level from the first key, recursing into the rest. A null key (e.g. no country level
-    /// for _Unknown location) skips that level. Folders starting with "_" (unknown) sort last.
+    /// One tree level: folders at <paramref name="depth"/> of the bucket paths, each with its subfolders below.
+    /// A folder's count includes everything under it. Order: normal names, then "~" guesses, then "_" unknowns.
     /// </summary>
-    private static List<BucketNode> TreeLevel(IEnumerable<BucketCount> buckets, Func<BucketCount, string?>[] keys)
-    {
-        if (keys.Length == 0) return [];
-        var withKey = buckets.Where(b => keys[0](b) is not null).ToList();
-        var skipped = buckets.Where(b => keys[0](b) is null).ToList();
-        var nodes = withKey
-            .GroupBy(b => keys[0](b)!)
-            .OrderBy(g => g.Key.StartsWith('_'))
+    private static List<BucketNode> TreeLevel(IReadOnlyCollection<BucketCount> buckets, int depth) =>
+    [
+        .. buckets
+            .Where(b => b.Levels.Length > depth)
+            .GroupBy(b => b.Levels[depth], StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key.StartsWith('_') ? 2 : g.Key.StartsWith(BestGuess.GuessPrefix) ? 1 : 0)
             .ThenBy(g => g.Key, StringComparer.CurrentCulture)
-            .Select(g => new BucketNode(g.Key, g.Sum(b => b.Count), g.Sum(b => b.Bytes), TreeLevel(g, keys[1..])))
-            .ToList();
-        return skipped.Count > 0 ? [.. nodes, .. TreeLevel(skipped, keys[1..])] : nodes;
+            .Select(g =>
+            {
+                var inside = g.ToList();
+                return new BucketNode(g.Key, inside.Sum(b => b.Count), inside.Sum(b => b.Bytes), TreeLevel(inside, depth + 1));
+            }),
+    ];
+
+    private static string GuessLine(GuessSummary? g)
+    {
+        if (g is null) return "";
+        string?[] parts =
+        [
+            g.PlaceGuessed > 0 ? $"{N(g.PlaceGuessed)} placed (~) by GPS photos taken at the same time" : null,
+            g.InAlbums > 0 ? $"{N(g.InAlbums)} in album folders" : null,
+            g.Screenshots > 0 ? $"{N(g.Screenshots)} screenshots" : null,
+            g.Graphics > 0 ? $"{N(g.Graphics)} graphics" : null,
+            g.Downloads > 0 ? $"{N(g.Downloads)} downloads" : null,
+        ];
+        var list = parts.OfType<string>().ToList();
+        return list.Count == 0 ? "" : " Best guesses: " + string.Join(", ", list) + ".";
     }
 
     private void SetPlan(OrganizePlan plan)
@@ -164,8 +183,8 @@ public partial class MainViewModel
         OrganizeCommand.NotifyCanExecuteChanged();
 
         Buckets.Clear();
-        // Continent → (Country → (Län →)) Year; levels a bucket doesn't have are simply skipped.
-        foreach (var node in TreeLevel(plan.Buckets, [b => b.Location, b => b.Country, b => b.Region, b => b.Year]))
+        // Continent → (Country → (Län →)) Year → (best-guess subfolders), straight from the folder paths.
+        foreach (var node in TreeLevel(plan.Buckets.ToList(), 0))
             Buckets.Add(node);
 
         var missing = plan.Missing > 0 ? $" {Files(plan.Missing)} in the catalog are missing from the destination." : "";
@@ -174,7 +193,7 @@ public partial class MainViewModel
             : plan.Moves.Count == 0
                 ? $"All {Files(plan.TotalFiles)} are already in the right folder.{missing}"
                 : $"{Files(plan.TotalFiles)}: {N(plan.Moves.Count)} to move, {N(plan.AlreadyInPlace)} already in place. " +
-                  $"Press Organize to move them.{missing}";
+                  $"Press Organize to move them.{missing}{GuessLine(plan.Guesses)}";
         OrganizePercent = 0;
     }
 

@@ -35,6 +35,7 @@ public partial class MainViewModel : ObservableObject
         UseFileDatesAsLastResort = s.UseFileDatesAsLastResort;
         CountryFolders = s.CountryFolders;
         SwedishCountyFolders = s.SwedishCountyFolders;
+        BestGuessUnknowns = s.BestGuessUnknowns;
 
         Sources.CollectionChanged += (_, _) => StartExtractCommand.NotifyCanExecuteChanged();
     }
@@ -66,6 +67,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool UseFileDatesAsLastResort { get; set; }
     [ObservableProperty] public partial bool CountryFolders { get; set; }
     [ObservableProperty] public partial bool SwedishCountyFolders { get; set; }
+    [ObservableProperty] public partial bool BestGuessUnknowns { get; set; }
 
     public IReadOnlyList<int> ParallelismChoices { get; } = [1, 2, 3, 4, 6, 8];
 
@@ -166,6 +168,7 @@ public partial class MainViewModel : ObservableObject
         UseFileDatesAsLastResort = UseFileDatesAsLastResort,
         CountryFolders = CountryFolders,
         SwedishCountyFolders = SwedishCountyFolders,
+        BestGuessUnknowns = BestGuessUnknowns,
     });
 
     private static string N(long value) => value.ToString("N0", CultureInfo.CurrentCulture);

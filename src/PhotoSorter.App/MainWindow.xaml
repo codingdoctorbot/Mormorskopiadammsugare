@@ -159,6 +159,8 @@
                             <CheckBox Content="…and Swedish counties: Europe \ Sweden \ Skåne län \ Year" IsChecked="{Binding SwedishCountyFolders}"
                                       IsEnabled="{Binding CountryFolders}" Margin="28,6,0,0"
                                       ToolTip="Photos from Sweden get a län folder (all 21 counties). Other countries are not affected." />
+                            <CheckBox Content="Best guesses inside the unknown folders" IsChecked="{Binding BestGuessUnknowns}" Margin="0,8,0,0"
+                                      ToolTip="Still inside _Unknown location / _Unknown year, but sorted further: ~Sweden when GPS photos taken within 3 hours agree on the place, the original album folder (when 3+ files share it), and screenshots, graphics and downloads in their own folders." />
                             <CheckBox Content="Use the file's modified date when nothing better is known" IsChecked="{Binding UseFileDatesAsLastResort}" Margin="0,8,0,0"
                                       ToolTip="Off by default: copying files into backups often resets that date to the day of the backup." />
                         </StackPanel>

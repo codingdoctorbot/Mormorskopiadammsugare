@@ -25,6 +25,7 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 |---|---|
 | Copy vs move | **Copy.** Never modify, move or delete source files. |
 | Layout | **Continent → Year** by default; optional **Continent → Country → Year**, and for Sweden optionally **→ Län →** Year |
+| Unknowns | Stay in `_Unknown location` / `_Unknown year`, but get **best-guess** subfolders (option, on by default): `~Place` from same-time GPS photos, album folders, `_Screenshots`/`_Graphics`/`_Downloads`. Guesses are always marked `~` or `_` and never mixed into trusted folders. |
 | Videos | Included, mixed with photos in the same folders. Audio is not included. |
 | ZIP / archives | Ignored for now |
 | Install | End product must need **no install**: one self-contained exe |
@@ -47,9 +48,13 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
   own icon, run statistics as number tiles).
 - ✅ Layout options: `Continent\Year` (default), `Continent\Country\Year`, and for Sweden `…\Sweden\<län>\Year`.
   Switching later just moves files.
-- ✅ 151 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+- ✅ **Best guesses inside the unknown folders** (`Organizing/BestGuess.cs`, ARCHITECTURE §5.5): same-time GPS
+  borrowing (±3 h, unanimous), album folders (≥3 files; never source/backup/device/user-profile names),
+  screenshots/graphics/downloads apart. Catalog schema v2 (auto-upgrade from v1) records guesses.
+  Checked on the 10 GB test pile: only meaningful albums ("Rome 2009", "Fjällen 2012"…).
+- ✅ 191 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
-  layout switching, and a guard against double-encoded source files.
+  layout switching, best guesses, schema migration, and a guard against double-encoded source files.
 - ⏳ **Release v0.1.0 not tagged yet** – blocked by a GitHub Actions outage on 2026-10-05 (hosted runners
   not assigned; every build since the public repo was created failed with "job was not acquired by Runner",
   incl. two re-runs). Code is not the cause: all tests pass locally. Steps: `docs/NEXT_SESSION.md` → 1.

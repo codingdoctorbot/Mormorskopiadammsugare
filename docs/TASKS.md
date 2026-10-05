@@ -70,5 +70,10 @@ App (`src/PhotoSorter.App`):
 
 ## Phase 4 – Polish (optional)
 - [ ] Thumbnail preview, duplicate review screen, pause/resume button
-- [ ] **Guess location from folder names** (`Thailand 2012`, `Skåne`) for photos without GPS – ~90 % of the real run had no GPS
+- [x] **Best guesses inside the unknown folders**: `~Place` from same-time GPS photos, album folders,
+  `_Screenshots`/`_Graphics`/`_Downloads` (ARCHITECTURE §5.5)
+- [ ] **Guess location from folder names** (`Thailand 2012`, `Skåne`) for photos without GPS – next step for
+  the unknowns; would add a second `~Place` source
+- [ ] Year guesses for `_Unknown year`: dominant year of the other photos in the same source folder; oldest
+  file date among all copies (marked `~2009`)
 - [ ] ZIP scanning

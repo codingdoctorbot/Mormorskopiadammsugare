@@ -20,6 +20,7 @@ public sealed class AppSettings
     public bool UseFileDatesAsLastResort { get; set; }
     public bool CountryFolders { get; set; }
     public bool SwedishCountyFolders { get; set; }
+    public bool BestGuessUnknowns { get; set; } = true;
 }
 
 /// <summary>

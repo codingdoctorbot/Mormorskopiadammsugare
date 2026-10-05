@@ -53,6 +53,7 @@ through messaging apps have no GPS. That's normal.
 |---|---|---|
 | **Add country folders** | `Europe\Sweden\2015` instead of `Europe\2015`. | Easier to find a trip. Switch any time – the next Organize just moves the sorted files. |
 | **…and Swedish counties** | (Needs country folders.) Photos from Sweden get a län level: `Europe\Sweden\Skåne län\2015`. Other countries unaffected. | For Swedish photos the country alone is too broad. |
+| **Best guesses inside the unknown folders** | Files without GPS or year stay in `_Unknown location` / `_Unknown year`, but are sorted further: **`~Sweden`** when GPS photos taken within 3 hours all agree on the place (e.g. a camera without GPS next to a phone with GPS), the **original album folder** (`Midsommar 2018`) when 3+ files share it, and **screenshots, graphics and downloads** in their own folders. On by default. | The unknown folders are often the biggest – this makes them browsable. The `~` means "best guess"; trusted folders stay trusted. |
 | **Use the file's modified date** | Uses that date when nothing better is known. Off by default. | Copying into backups often resets it to the backup day, putting old photos in the wrong year. Without a real date, a photo goes to `_Unknown year` instead. |
 
 **Buttons:** *Preview* shows the tree of how files **will** be sorted – nothing moves yet. *Organize*
@@ -65,6 +66,9 @@ Europe\2015\                      known place and year
 Europe\_Unknown year\             known place, no year
 _Unknown location\2009\           no place, known year
 _Unknown location\_Unknown year\  nothing known
+_Unknown location\2018\~Sweden\   best guess: same time as GPS photos from Sweden
+_Unknown location\2018\Midsommar 2018\   best guess: original album folder
+_Unknown location\_Screenshots\   screenshots (also _Graphics, _Downloads)
 Extracted\                        waiting to be sorted (empty after Organize)
 _Mormorskopiadammsugare\          catalog + logs – keep it while you still use the program on this folder
 ```

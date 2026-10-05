@@ -365,6 +365,33 @@ Leading `_` makes the fallback folders sort to the top in Explorer.
 - Option "Organize automatically after extract" (default ON).
 - Metadata reading is parallel (SSD) – default 4 workers.
 
+### 5.5 Best guesses inside the unknown folders (`Organizing/BestGuess`, option, default on in the UI)
+Files stay under `_Unknown location` / `_Unknown year`, but are sorted further. Guesses are marked and
+recorded in the catalog (schema v2: `guess_place`, `guess_reason`, `album`, `category`) and in the organize log.
+
+```
+_Unknown location\
+   2018\
+      ~Sweden\              ← probable place (country folders on; "~Europe" otherwise)
+      Midsommar 2018\       ← original album folder (3+ files share it)
+   _Screenshots\2019\  _Graphics\_Unknown year\  _Downloads\2015\
+Europe\_Unknown year\Rome trip\   ← album folders also where the year is unknown
+```
+
+1. **Place from photos taken at the same time** – a no-GPS photo with a real capture time (EXIF, QuickTime,
+   AVI; never file dates) gets `~<place>` when **all** GPS photos within **±3 h** agree on the place (country
+   with country folders on, else continent). Disagreement (border, flight) → no guess. Typical case: camera
+   without GPS + phone with GPS on the same trip.
+2. **Album folders** – the nearest meaningful folder name above the file (up to 4 levels), most common among
+   all copies. Skipped: generic names (DCIM, Pictures, Bilder, Desktop, Downloads…), camera folders (100CANON,
+   plain numbers), device names (SD card, Minneskort, iPhone, Mobil…), our own folders (`Extracted`, `_…`,
+   `~…`). The search stops at backup folders, at user-profile folders (`Users\<name>` – a person's name is
+   never an album) and at the **source folders the user added** (read from the runs' saved options). Only
+   used when **≥ 3 files** share the album in the same bucket.
+3. **Non-photos apart** (unknown location only): `_Screenshots` (screenshot names/folders), `_Graphics`
+   (PNG/GIF/BMP/ICO/PSD/WebP without camera data), `_Downloads` (**every** copy in a Downloads folder).
+   No album or place guess inside these.
+
 ## 6. Later ideas (not planned)
 - Guess location from folder names (`Thailand 2012`, `Rome`) for no-GPS photos.
 - Country/city sub-levels (catalog already stores country).

@@ -1,6 +1,6 @@
 # Next session – agenda
 
-*Written at the end of session 7 (2026-10-05). Rewrite this file at the end of every session.*
+*Written at the end of session 8 (2026-10-05). Rewrite this file at the end of every session.*
 
 Read [HANDOFF.md](../HANDOFF.md) first. Then work through this list top to bottom; ask the owner about the
 open questions before starting the optional work.
@@ -32,6 +32,9 @@ Then: move CHANGELOG *Unreleased* items (if any) under a new version, and update
    (Only the header, never the content.) If they play in a video player, our detection misses a container
    variant – add its signature + a test.
 3. **Want a "Check all copies" button?** (See 3a.) Matters if the old backups will ever be deleted.
+4. **How did the new best guesses look on the real pile?** (Preview with the option on; the status line
+   reports how many got `~Place`, album folders, screenshots/graphics/downloads.) Any wrong album names
+   → extend the generic/device folder lists in `BestGuess.cs`.
 
 ## 3. Candidate work (in suggested order – confirm with the owner)
 
@@ -42,10 +45,13 @@ a. **Check all copies** – re-hash every file in the destination and compare wi
 b. **Suspect videos** – depends on question 2. Classic QuickTime files with an unusual first atom, or other
    container variants, would be a real detection gap.
 
-c. **Location from folder names** – `Thailand 2012`, `Rom 2009`, `Skåne` → continent/country/län for photos
-   without GPS (~90 % of the real run). Needs a place-name list (countries in English + Swedish, Swedish
-   län and big cities), a word-boundary matcher, and the same "nearest folder wins, skip backup folders"
-   rule as for years. Show it as a separate source in the catalog (`location_source = FolderName`).
+c. **Location from folder names** – `Thailand 2012`, `Rom 2009`, `Skåne` → a second source for the
+   `~Place` best guess (same-time GPS borrowing exists since session 8). Needs a place-name list (countries in
+   English + Swedish, Swedish län and big cities), a word-boundary matcher, and the "nearest folder wins,
+   skip backup folders" rule. Record it in `guess_reason`.
+
+c2. **Year guesses** for `_Unknown year`: dominant year of the other photos in the same source folder, or the
+   oldest file date among all copies – as `~2009` subfolders, same marking rules as place guesses.
 
 d. **Smarter small-file filter** – skip images below N×N pixels instead of below N KB, so 160×120 early
    camera-phone photos survive while icons are dropped. Header-only read (MetadataExtractor has the

@@ -58,6 +58,9 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 - ✅ **Move mode + Restore originals** (ARCHITECTURE §4.9, catalog schema v3). Checked end to end on a 3.1 GB
   real copy of part of the test pile: 316 originals removed, 0 lost, read-only and program-folder photos
   kept, restore gave a byte- and date-identical tree, a second move run removed the same 316 again.
+- ✅ **Real move run** by the owner (2026-10-06, logs only): ~105 GB / 46,722 files moved, 3,461 duplicates
+  deleted, 12,583 kept in place on purpose, 0 errors. The 11,007 suspects were USB-corrupted junk from one
+  recovered Mac volume (files starting with `USBC`) – see SESSIONS session 9.
 - ✅ 223 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
   layout switching, best guesses, move mode and restore, schema migration, and a guard against double-encoded source files.

@@ -7,7 +7,8 @@ open questions before starting the optional work.
 
 ## 1. v0.2.0 is out – collect feedback
 
-Released 2026-10-06 (verified); the owner's desktop runs the official build. Ask how move mode went on the real
+Released 2026-10-06 (verified); the owner's desktop runs the official build. Move mode already ran on the
+real pile with 0 errors (SESSIONS session 9). Ask about the rest of their backups, and how they find the result
 pile (KeptInSource reasons in the log – any surprising ones?), and how do the best guesses and
 `_Stock & memes` look (Preview → status line counts)?
 
@@ -36,6 +37,11 @@ pile (KeptInSource reasons in the log – any surprising ones?), and how do the 
    → extend the generic/device folder lists in `BestGuess.cs`.
 
 ## 3. Candidate work (in suggested order – confirm with the owner)
+
+a00. **Name the junk in suspects** – give the log a reason per suspect: `USB command packet (corrupted copy)`
+   for files starting with `USBC`/`USBS`, `all zeros`, `blank flash (55/AA fill)`, `HTML page`. The owner's
+   11,007 suspects were all one of these. Maybe skip copying the obviously dead ones even with *Copy suspect
+   files* on.
 
 a0. **Move mode: remove emptied folders** – after a move run the sources keep thousands of empty folder
    shells. Remove a folder only if it is empty *and* every file it ever held is recorded as removed (catalog),

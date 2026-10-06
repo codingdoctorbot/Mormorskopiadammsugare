@@ -6,7 +6,7 @@ the history behind it. Keep entries short and free of personal details.
 
 ---
 
-## 2026-10-06 · Session 9 – `_Stock & memes`, release v0.1.0, move mode
+## 2026-10-06 · Session 9 – `_Stock & memes`, releases v0.1.0 + v0.2.0, move mode
 
 **Done**
 - Finished the `_Stock & memes` option (see session 8 notes) and docs.
@@ -18,6 +18,20 @@ the history behind it. Keep entries short and free of personal details.
   originals after the kept copy is checked, catalog schema v3 (`sources.removed_how/removed_utc`, step-by-step
   upgrades), `Restorer`, UI checkbox (never saved) + confirmation + warning box + restore button. 223 tests.
   End to end on a 3.1 GB real copy of four pile folders: 0 lost, restore byte/date-identical.
+- Released **v0.2.0** (move mode), verified like v0.1.0.
+- **First real move run** by the owner (logs + catalog only): ~105 GB / 46,722 files moved by rename in
+  2 min 48 s, 3,461 duplicates deleted after checking, 12,583 copied but kept in place (11,469 suspect,
+  1,865 program/game folders, 155 read-only, 1 next to a `.dll`), **0 errors**; organize 48,298, 0 errors.
+  Log, run stats and catalog `removed_how` counts all agree.
+- **Suspects examined** (with the owner's OK, first bytes only): all 11,007 came from one recovered Mac
+  volume (`HFS+_0001`, recovery-tool naming). 93 % start with `USBC` (a USB mass-storage *command block
+  wrapper*: SCSI READ(10)), a few with `USBS` (status wrapper), `55…`/`AA…` fill or zeros – the recovery read
+  garbage through a faulty USB path. By name: app graphics and hash-named cache files; 79 camera-named files
+  were 5–16 KB Photos thumbnails/face crops (66 with an intact same name+size copy); 14 zero-filled videos, 11
+  with intact copies, 3 entirely zeros. Detection was right; nothing of value lost.
+- On request, deleted the suspects: `Extracted\_suspect` (by the owner) and 9,942 of 11,469 originals (each
+  re-hashed against the log before going to the Recycle Bin; the owner stopped the job and emptied the bin).
+  1,527 junk originals remain in that recovery folder.
 
 **Decisions**
 - The owner asked for move mode after hearing the risks: redundancy in 40 000 unfindable folders isn't worth
@@ -35,6 +49,9 @@ the history behind it. Keep entries short and free of personal details.
   in a view model passed all tests. Always also run `dotnet build PhotoSorter.sln`.
 - Python heredocs mangled backslashes again (`\:` in C# time formats, `\n` became real newlines). C# raw
   string literals (`"""…"""`) in the source avoid escapes altogether.
+- A file starting with `USBC` (55 53 42 43) is a USB command packet, not data: the sign of a corrupted copy
+  or recovery through a broken USB adapter/drive. Worth naming in the log (see NEXT_SESSION).
+- Deleting thousands of files one by one via the Recycle Bin (VB `FileSystem.DeleteFile`) takes minutes.
 - End-to-end checks of destructive features: run them on a **real copy** (not hard links – shared inodes
   share timestamps, so the test set itself would change) and compare a full before/after snapshot.
 

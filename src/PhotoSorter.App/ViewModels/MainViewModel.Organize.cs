@@ -72,6 +72,9 @@ public partial class MainViewModel
     partial void OnCountryFoldersChanged(bool value) =>
         DiscardPlan("Folder layout changed – press Preview again. Already sorted files will be moved to the new layout.");
 
+    partial void OnStockAndMemesApartChanged(bool value) =>
+        DiscardPlan("Option changed – press Preview again. Already sorted files will be moved to the new layout.");
+
     partial void OnBestGuessUnknownsChanged(bool value) =>
         DiscardPlan("Option changed – press Preview again. Already sorted files will be moved to the new layout.");
 
@@ -95,6 +98,7 @@ public partial class MainViewModel
                 CountryFolders = CountryFolders,
                 SwedishCountyFolders = SwedishCountyFolders,
                 BestGuessUnknowns = BestGuessUnknowns,
+                StockAndMemesApart = StockAndMemesApart,
                 Parallelism = Parallelism,
             };
             OrganizeStatus = "Reading dates and GPS positions…";
@@ -172,6 +176,7 @@ public partial class MainViewModel
             g.Screenshots > 0 ? $"{N(g.Screenshots)} screenshots" : null,
             g.Graphics > 0 ? $"{N(g.Graphics)} graphics" : null,
             g.Downloads > 0 ? $"{N(g.Downloads)} downloads" : null,
+            g.StockAndMemes > 0 ? $"{N(g.StockAndMemes)} stock photos/memes" : null,
         ];
         var list = parts.OfType<string>().ToList();
         return list.Count == 0 ? "" : " Best guesses: " + string.Join(", ", list) + ".";

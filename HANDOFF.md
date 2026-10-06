@@ -52,7 +52,9 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
   borrowing (±3 h, unanimous), album folders (≥3 files; never source/backup/device/user-profile names),
   screenshots/graphics/downloads apart. Catalog schema v2 (auto-upgrade from v1) records guesses.
   Checked on the 10 GB test pile: only meaningful albums ("Rome 2009", "Fjällen 2012"…).
-- ✅ 191 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+- ✅ **Stock photos and memes** (by file name) → `…\_Stock & memes\` inside every final folder (option, on by
+  default; ARCHITECTURE §5.6). False positives accepted: they stay in the same folder, one level deeper.
+- ✅ 213 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
   layout switching, best guesses, schema migration, and a guard against double-encoded source files.
 - ⏳ **Release v0.1.0 not tagged yet** – blocked by a GitHub Actions outage on 2026-10-05 (hosted runners

@@ -29,6 +29,9 @@ public sealed record OrganizeOptions
     /// </summary>
     public bool BestGuessUnknowns { get; init; }
 
+    /// <summary>Stock photos and memes (recognised by file name) go to a <c>_Stock &amp; memes</c> subfolder of their folder.</summary>
+    public bool StockAndMemesApart { get; init; }
+
     public int Parallelism { get; init; } = 4;
 }
 
@@ -55,9 +58,9 @@ public sealed record BucketCount(string Directory, int Count, long Bytes)
 }
 
 /// <summary>How much best-guess sorting did (all 0 when it's off).</summary>
-public sealed record GuessSummary(int PlaceGuessed, int InAlbums, int Screenshots, int Graphics, int Downloads)
+public sealed record GuessSummary(int PlaceGuessed, int InAlbums, int Screenshots, int Graphics, int Downloads, int StockAndMemes = 0)
 {
-    public static readonly GuessSummary None = new(0, 0, 0, 0, 0);
+    public static readonly GuessSummary None = new(0, 0, 0, 0, 0, 0);
 }
 
 public sealed record OrganizePlan(
@@ -191,7 +194,7 @@ public sealed class Organizer(ContinentLocator? locator = null)
         // 4. Save, plan moves, count buckets.
         var moves = new List<PlannedMove>();
         var buckets = new Dictionary<string, (int Count, long Bytes)>(StringComparer.OrdinalIgnoreCase);
-        int inPlace = 0, placeGuessed = 0, inAlbums = 0, screenshots = 0, graphics = 0, downloads = 0;
+        int inPlace = 0, placeGuessed = 0, inAlbums = 0, screenshots = 0, graphics = 0, downloads = 0, stockAndMemes = 0;
         using (var tx = db.BeginTransaction())
         {
             foreach (var t0 in targets)
@@ -211,6 +214,7 @@ public sealed class Organizer(ContinentLocator? locator = null)
                     case BestGuess.Screenshots: screenshots++; break;
                     case BestGuess.Graphics: graphics++; break;
                     case BestGuess.Downloads: downloads++; break;
+                    case BestGuess.StockAndMemes: stockAndMemes++; break;
                 }
 
                 buckets[t.Dir] = buckets.TryGetValue(t.Dir, out var b) ? (b.Count + 1, b.Bytes + row.Size) : (1, row.Size);
@@ -236,7 +240,7 @@ public sealed class Organizer(ContinentLocator? locator = null)
             .ToList();
         progress?.Report(new(OrganizePhase.Finished, rows.Count, rows.Count, 0, null));
         return new OrganizePlan(layout.Root, moves, bucketList, rows.Count, inPlace, missing,
-            new GuessSummary(placeGuessed, inAlbums, screenshots, graphics, downloads));
+            new GuessSummary(placeGuessed, inAlbums, screenshots, graphics, downloads, stockAndMemes));
     }
 
     /// <summary>The label a place guess uses: the country with country folders on, else the continent.</summary>
@@ -248,6 +252,11 @@ public sealed class Organizer(ContinentLocator? locator = null)
     {
         var region = options.SwedishCountyFolders && r.Geo?.CountryCode == "SE" ? r.Geo.Region : null;
         var dir = FolderLayout.RelativeDirectory(r.Geo?.Continent, r.Geo?.CountryName, region, r.Year.Year, options.CountryFolders);
+
+        // Stock photos and memes: one subfolder deeper in whatever folder they belong to – easy to check there.
+        if (options.StockAndMemesApart && BestGuess.IsStockOrMeme(r.Paths))
+            return new Target(r, Path.Combine(dir, BestGuess.StockAndMemes), null, "Stock photo or meme (file name)", null, BestGuess.StockAndMemes);
+
         if (guesser is null) return new Target(r, dir, null, null, null, null);
 
         string? place = null, reason = null, category = null;

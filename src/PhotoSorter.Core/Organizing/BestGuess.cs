@@ -19,6 +19,9 @@ public static partial class BestGuess
     public const string Graphics = "_Graphics";
     public const string Downloads = "_Downloads";
 
+    /// <summary>Subfolder inside every final folder for stock photos and memes/web images (by file name).</summary>
+    public const string StockAndMemes = "_Stock & memes";
+
     /// <summary>GPS photos within this time of a photo vouch for its place.</summary>
     public static readonly TimeSpan PlaceWindow = TimeSpan.FromHours(3);
 
@@ -128,6 +131,44 @@ public static partial class BestGuess
             .OrderByDescending(g => g.Count())
             .Select(g => g.First())
             .FirstOrDefault();
+
+    // ---------------- 4. Stock photos and memes (any folder) ----------------
+
+    /// <summary>
+    /// True when any copy's file name looks like a stock-site download or a meme/web image: stock agencies,
+    /// meme sites, Discord (<c>image0.png</c>, <c>unknown.png</c>), Reddit/Twitter-style random names, Tumblr,
+    /// Facebook-saved (<c>FB_IMG_…</c>) and Messenger (<c>received_…</c>) names. Name-based only, so false
+    /// positives happen – they just end up one subfolder deeper in the same folder, easy to check.
+    /// </summary>
+    public static bool IsStockOrMeme(IEnumerable<string> paths) =>
+        paths.Select(Path.GetFileName).OfType<string>().Any(name =>
+        {
+            var stem = Path.GetFileNameWithoutExtension(name);
+            return StockName().IsMatch(name) || MemeName().IsMatch(name) || RedditName().IsMatch(stem) || TwitterName(stem);
+        });
+
+    /// <summary>15 random characters with upper case, lower case and digits (Twitter/X media) – not a camera name.</summary>
+    private static bool TwitterName(string stem) =>
+        stem.Length == 15 && TwitterChars().IsMatch(stem) && stem.Any(char.IsUpper) && stem.Any(char.IsLower) &&
+        stem.Any(char.IsDigit) && !CameraPrefix().IsMatch(stem);
+
+    [GeneratedRegex(@"(?<![a-z])(shutterstock|istock(photo)?|gettyimages|getty_images|adobestock|adobe_stock|depositphotos|123rf|dreamstime|fotolia|bigstock|canstock|freepik|pexels|unsplash|pixabay|alamy|thinkstock|vecteezy|rawpixel|stock[-_ ]photo)",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex StockName();
+
+    [GeneratedRegex(@"(?<![a-z])(memes?|9gag|imgflip|ifunny)(?![a-z])|^tumblr_|^fb_img_\d{13}|^received_\d{6,}|^(image\d+|unknown)\.(png|jpe?g|gif|webp)$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex MemeName();
+
+    /// <summary>Reddit media: 13 lower-case letters and digits (mixed).</summary>
+    [GeneratedRegex(@"^(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{13}$")]
+    private static partial Regex RedditName();
+
+    [GeneratedRegex(@"^[A-Za-z0-9_-]+$")]
+    private static partial Regex TwitterChars();
+
+    [GeneratedRegex(@"^(img|dsc|dscn|dscf|pxl|vid|mvi|p\d|pict|sam|imag|gopr|dji|photo|bild|screenshot)", RegexOptions.IgnoreCase)]
+    private static partial Regex CameraPrefix();
 
     // ---------------- 3. Non-photos ----------------
 

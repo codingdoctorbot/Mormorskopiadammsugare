@@ -43,6 +43,8 @@ Also good to know:
 - **No GPS or no date?** Those files stay in the `_Unknown…` folders but get a **best attempt**: a probable
   place (`~Sweden`) when GPS photos taken within 3 hours agree, the original album folder, and screenshots,
   graphics and downloads in folders of their own. Guesses are marked with `~` and can be switched off.
+- **Stock photos and memes** (recognised by file name) go one level deeper in their own folder:
+  `Europe\Sweden\Skåne län\2016\_Stock & memes\` – out of the way, but right there to check.
 - **Interrupted?** Press Start again – files already done are skipped, so it simply continues.
 - **Skipped on purpose:** tiny thumbnails, app caches (`AppData`, browser caches), `Windows\`,
   macOS `._` files, `Thumbs.db`, and files that are named like photos but aren't (logged as *suspect*).

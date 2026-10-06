@@ -62,6 +62,30 @@ public class BestGuessUnitTests
     public void Category(MediaKind kind, MediaFormat format, string? make, string path, string? expected) =>
         Assert.Equal(expected, BestGuess.Category(kind, format, make, [path]));
 
+    [Theory]
+    [InlineData("shutterstock_123456789.jpg", true)]
+    [InlineData("iStock-1203456789.jpg", true)]
+    [InlineData("GettyImages-1234567.jpg", true)]
+    [InlineData("AdobeStock_98765.jpeg", true)]
+    [InlineData("pexels-photo-1234567.jpeg", true)]
+    [InlineData("john-smith-AbC12dEf-unsplash.jpg", true)]
+    [InlineData("funny meme 3.png", true)]
+    [InlineData("image0.png", true)]                      // Discord
+    [InlineData("unknown.png", true)]
+    [InlineData("a1b2c3d4e5f6g.jpg", true)]               // Reddit
+    [InlineData("EaB3x9KqWzT1mPq.jpg", true)]             // Twitter
+    [InlineData("tumblr_n1abc2def3_1280.jpg", true)]
+    [InlineData("FB_IMG_1546273920123.jpg", true)]
+    [InlineData("received_10157392018472.jpeg", true)]
+    [InlineData("IMG_0042.JPG", false)]                   // normal camera names
+    [InlineData("DSC_1234.jpg", false)]
+    [InlineData("IMG_20180715_143005.jpg", false)]
+    [InlineData("Midsommar med familjen.jpg", false)]
+    [InlineData("Mistock garden.jpg", false)]             // "istock" inside a word doesn't count
+    [InlineData("Memento 2009.jpg", false)]
+    public void Stock_and_meme_names(string name, bool expected) =>
+        Assert.Equal(expected, BestGuess.IsStockOrMeme([@"E:\x\" + name]));
+
     [Fact]
     public void Place_guess_needs_agreeing_gps_photos_within_three_hours()
     {
@@ -195,6 +219,50 @@ public class BestGuessOrganizerTests : IDisposable
         await ExtractAndOrganizeAsync();
 
         Assert.All(SortedFiles(), f => Assert.StartsWith(@"_Unknown location\_Unknown year\IMG_", f));
+    }
+
+    [Fact]
+    public async Task Stock_photos_and_memes_go_one_level_deeper_in_their_own_folder()
+    {
+        TestFiles.Write(Src(@"Trip\shutterstock_123456789.jpg"), TestFiles.Jpeg(seed: 1, taken: new(2015, 6, 20, 12, 0, 0), gps: Stockholm));
+        TestFiles.Write(Src(@"Trip\IMG_0001.jpg"), TestFiles.Jpeg(seed: 2, taken: new(2015, 6, 20, 13, 0, 0), gps: Stockholm));
+        TestFiles.Write(Src(@"Chat\image0.png"), TestFiles.Png(seed: 3));
+        TestFiles.Write(Src(@"Saved\FB_IMG_1546273920123.jpg"), TestFiles.Jpeg(seed: 4));
+
+        await new ExtractionPipeline().RunAsync(new ScanOptions { Sources = [_tmp["src"]], Destination = Dest }, null, Ct);
+        var organizer = new Organizer();
+        var plan = await organizer.AnalyzeAsync(new OrganizeOptions { Destination = Dest, StockAndMemesApart = true, BestGuessUnknowns = true }, null, Ct);
+        await organizer.ApplyAsync(plan, null, Ct);
+
+        Assert.Equal(
+        [
+            @"Europe\2015\IMG_0001.jpg",
+            @"Europe\2015\_Stock & memes\shutterstock_123456789.jpg",
+            // FB_IMG's number is when it was saved from Facebook, not when it was taken – deliberately not a year.
+            @"_Unknown location\_Unknown year\_Stock & memes\FB_IMG_1546273920123.jpg",
+            @"_Unknown location\_Unknown year\_Stock & memes\image0.png",
+        ], SortedFiles());
+        Assert.Equal(3, plan.Guesses!.StockAndMemes);
+    }
+
+    [Fact]
+    public async Task Stock_and_memes_sit_below_country_and_lan_too()
+    {
+        TestFiles.Write(Src(@"Trip\shutterstock_1.jpg"), TestFiles.Jpeg(seed: 1, taken: new(2016, 5, 1, 12, 0, 0), gps: (55.6050, 13.0038)));
+        TestFiles.Write(Src(@"Trip\IMG_0001.jpg"), TestFiles.Jpeg(seed: 2, taken: new(2016, 5, 1, 13, 0, 0), gps: (55.6050, 13.0038)));
+
+        await new ExtractionPipeline().RunAsync(new ScanOptions { Sources = [_tmp["src"]], Destination = Dest }, null, Ct);
+        var organizer = new Organizer();
+        await organizer.ApplyAsync(await organizer.AnalyzeAsync(new OrganizeOptions
+        {
+            Destination = Dest, CountryFolders = true, SwedishCountyFolders = true, StockAndMemesApart = true,
+        }, null, Ct), null, Ct);
+
+        Assert.Equal(
+        [
+            @"Europe\Sweden\Skåne län\2016\IMG_0001.jpg",
+            @"Europe\Sweden\Skåne län\2016\_Stock & memes\shutterstock_1.jpg",
+        ], SortedFiles());
     }
 
     [Fact]

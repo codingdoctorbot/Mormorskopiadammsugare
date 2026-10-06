@@ -392,6 +392,16 @@ Europe\_Unknown year\Rome trip\   ← album folders also where the year is unkno
    (PNG/GIF/BMP/ICO/PSD/WebP without camera data), `_Downloads` (**every** copy in a Downloads folder).
    No album or place guess inside these.
 
+### 5.6 Stock photos and memes (option, default on in the UI)
+In **every** final folder, files whose name (any copy) looks like a stock-site download or a meme/web image go
+one level deeper: `Europe\Sweden\Skåne län\2016\_Stock & memes\`. Checked before the unknown-folder guesses.
+Name patterns: stock agencies (Shutterstock, iStock, Getty, Adobe Stock, Depositphotos, 123RF, Dreamstime,
+Fotolia, Bigstock, Freepik, Pexels, Unsplash, Pixabay, Alamy…), meme sites (meme, 9GAG, Imgflip, iFunny),
+Discord (`image0.png`, `unknown.png`), Reddit (13 random lower-case/digits), Twitter/X (15 random mixed-case),
+Tumblr, Facebook-saved (`FB_IMG_<13 digits>`), Messenger (`received_<digits>`). Name-based only: false
+positives are accepted because they stay in the same folder, easy to inspect. `FB_IMG_` numbers are the save
+time, not the capture time, so they are not used as a year.
+
 ## 6. Later ideas (not planned)
 - Guess location from folder names (`Thailand 2012`, `Rome`) for no-GPS photos.
 - Country/city sub-levels (catalog already stores country).

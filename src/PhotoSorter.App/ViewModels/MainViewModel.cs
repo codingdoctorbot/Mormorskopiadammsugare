@@ -36,6 +36,7 @@ public partial class MainViewModel : ObservableObject
         CountryFolders = s.CountryFolders;
         SwedishCountyFolders = s.SwedishCountyFolders;
         BestGuessUnknowns = s.BestGuessUnknowns;
+        StockAndMemesApart = s.StockAndMemesApart;
 
         Sources.CollectionChanged += (_, _) => StartExtractCommand.NotifyCanExecuteChanged();
     }
@@ -68,6 +69,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool CountryFolders { get; set; }
     [ObservableProperty] public partial bool SwedishCountyFolders { get; set; }
     [ObservableProperty] public partial bool BestGuessUnknowns { get; set; }
+    [ObservableProperty] public partial bool StockAndMemesApart { get; set; }
 
     public IReadOnlyList<int> ParallelismChoices { get; } = [1, 2, 3, 4, 6, 8];
 
@@ -169,6 +171,7 @@ public partial class MainViewModel : ObservableObject
         CountryFolders = CountryFolders,
         SwedishCountyFolders = SwedishCountyFolders,
         BestGuessUnknowns = BestGuessUnknowns,
+        StockAndMemesApart = StockAndMemesApart,
     });
 
     private static string N(long value) => value.ToString("N0", CultureInfo.CurrentCulture);

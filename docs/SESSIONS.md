@@ -22,7 +22,13 @@ the history behind it. Keep entries short and free of personal details.
 - Album folders only for ≥3 files; never the user's source folders, backups, devices, user profiles, or our
   own folders.
 
+- Later in the session: **`_Stock & memes`** subfolder in every final folder for stock-site and meme/web file
+  names (ARCHITECTURE §5.6). 213 tests.
+
 **Lessons**
+- Check value against real data before building, but weigh the **cost of a wrong guess** too: the owner's real
+  run had only ~85 matching names (0.2 %), yet a wrong guess here only means "one subfolder deeper in the same
+  folder", so it was worth building anyway.
 - The 10 GB test pile caught three album mistakes the unit tests missed: the **source folder** itself
   ("pile"), **Downloads** as an album, and **device names** ("Camera SD card (2)"). Also: a photo is only a
   "download" if *every* copy is in Downloads. Realistic data before shipping pays off.

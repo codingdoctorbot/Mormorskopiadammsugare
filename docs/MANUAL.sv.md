@@ -53,6 +53,7 @@ inskannade foton och bilder skickade via chattappar saknar GPS. Det är normalt.
 |---|---|---|
 | **Add country folders** (landsmappar) | `Europe\Sweden\2015` i stället för `Europe\2015`. | Lättare att hitta en resa. Byt när som helst – nästa sortering flyttar bara de sorterade filerna. |
 | **…and Swedish counties** (svenska län) | (Kräver landsmappar.) Bilder från Sverige får en länsnivå: `Europe\Sweden\Skåne län\2015`. Andra länder påverkas inte. | För svenska bilder är bara landet en för grov indelning. |
+| **Stock photos and memes in a subfolder** (bildbyråbilder och memes i en undermapp) | I varje mapp hamnar filer vars namn ser ut som nedladdningar från bildbyråer (Shutterstock, iStock, Getty…) eller memes och webbilder (meme-sajter, Discord, Reddit, Twitter, Tumblr, sparade från Facebook/Messenger) i undermappen `_Stock & memes`, t.ex. `Europe\Sweden\Skåne län\2016\_Stock & memes\`. På från början. | Håller dina egna bilder fria från skräp. Namn kan vilseleda, så de ligger kvar i samma mapp, en nivå ner – lätta att kolla. |
 | **Best guesses inside the unknown folders** (bästa gissning i de okända mapparna) | Filer utan GPS eller år ligger kvar i `_Unknown location` / `_Unknown year`, men sorteras vidare: **`~Sweden`** när GPS-bilder tagna inom 3 timmar alla är överens om platsen (t.ex. en kamera utan GPS bredvid en telefon med GPS), **originalets albummapp** (`Midsommar 2018`) när minst 3 filer delar den, och **skärmbilder, grafik och nedladdningar** i egna mappar. På från början. | De okända mapparna blir ofta störst – det här gör dem lätta att bläddra i. `~` betyder "bästa gissning"; de säkra mapparna förblir säkra. |
 | **Use the file's modified date** (använd ändringsdatum) | Använder det datumet när inget bättre finns. Av från början. | När filer kopieras till säkerhetskopior blir datumet ofta kopieringsdagen, och gamla bilder skulle hamna på fel år. Utan riktigt datum hamnar bilden i stället i `_Unknown year` (okänt år). |
 
@@ -69,6 +70,7 @@ _Unknown location\_Unknown year\  inget känt
 _Unknown location\2018\~Sweden\   bästa gissning: samma tid som GPS-bilder från Sverige
 _Unknown location\2018\Midsommar 2018\   bästa gissning: originalets albummapp
 _Unknown location\_Screenshots\   skärmbilder (även _Graphics, _Downloads)
+…\2016\_Stock & memes\            i alla mappar: bildbyråbilder och memes, efter filnamn
 Extracted\                        väntar på sortering (tom efter Organize)
 _Mormorskopiadammsugare\          katalog + loggar – behåll den så länge du använder programmet på mappen
 ```

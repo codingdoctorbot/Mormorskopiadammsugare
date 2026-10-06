@@ -50,7 +50,8 @@ public partial class MainViewModel : ObservableObject
     public partial string? SelectedSource { get; set; }
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(StartExtractCommand), nameof(AnalyzeCommand), nameof(OpenDestinationCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartExtractCommand), nameof(AnalyzeCommand), nameof(OpenDestinationCommand),
+        nameof(RestoreOriginalsCommand))]
     public partial string Destination { get; set; } = "";
 
     // ---------- options ----------
@@ -71,6 +72,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial bool BestGuessUnknowns { get; set; }
     [ObservableProperty] public partial bool StockAndMemesApart { get; set; }
 
+    /// <summary>Move mode. Deliberately never saved: every app start is back to copying.</summary>
+    [ObservableProperty] public partial bool MoveOriginals { get; set; }
+
     public IReadOnlyList<int> ParallelismChoices { get; } = [1, 2, 3, 4, 6, 8];
 
     [ObservableProperty] public partial int SelectedTabIndex { get; set; }
@@ -80,7 +84,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
     [NotifyCanExecuteChangedFor(nameof(StartExtractCommand), nameof(AnalyzeCommand), nameof(OrganizeCommand),
-        nameof(CancelCommand), nameof(AddSourcesCommand), nameof(RemoveSourceCommand), nameof(BrowseDestinationCommand))]
+        nameof(CancelCommand), nameof(AddSourcesCommand), nameof(RemoveSourceCommand), nameof(BrowseDestinationCommand),
+        nameof(RestoreOriginalsCommand))]
     public partial bool IsBusy { get; set; }
 
     public bool IsIdle => !IsBusy;
@@ -181,4 +186,9 @@ public partial class MainViewModel : ObservableObject
 
     private static void ShowError(string title, string message) =>
         MessageBox.Show(Application.Current.MainWindow, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    /// <summary>Yes/No question; No is the default button.</summary>
+    private static bool Confirm(string title, string message) =>
+        MessageBox.Show(Application.Current.MainWindow, message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
 }

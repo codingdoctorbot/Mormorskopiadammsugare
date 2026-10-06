@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="PhotoSorter.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Country polygons for the offline continent lookup – regenerate with tools/GeoPrep.
          Not "countries.bin.gz": MSBuild would read "bin" as a culture (Bini language) and move it to a satellite assembly. -->
     <EmbeddedResource Include="Geo\countries.gz" LogicalName="PhotoSorter.Core.Geo.countries.gz" />

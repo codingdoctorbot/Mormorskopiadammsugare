@@ -43,6 +43,12 @@ public sealed record ScanProgress
     /// <summary>Photo/video extension but the content doesn't match.</summary>
     public long Suspects { get; init; }
 
+    /// <summary>Move mode: originals removed from the source folders (moved or duplicate deleted).</summary>
+    public long RemovedFromSources { get; init; }
+
+    /// <summary>Move mode: originals left in place on purpose (program folder, read-only, cloud, check failed).</summary>
+    public long KeptInSources { get; init; }
+
     public long Errors { get; init; }
     public long BytesCopied { get; init; }
     public long BytesHashed { get; init; }

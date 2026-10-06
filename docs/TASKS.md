@@ -57,7 +57,10 @@ App (`src/PhotoSorter.App`):
 - [ ] Progress by bytes rather than file count (big videos make the bar uneven)
 - [x] First real-world run (owner's backups, ~100 GB): 0 errors; findings in HANDOFF
 - [x] **Release v0.1.0** – published 2026-10-06 with a verified build attestation
-- [ ] **Check all copies** – re-hash the destination against the catalog (before deleting originals)
+- [x] **Move mode + Restore originals** – ARCHITECTURE §4.9 (2026-10-06)
+- [ ] Move mode: remove folders left empty in the sources (only folders that held nothing but moved files)
+- [ ] **Check all copies** – re-hash the destination against the catalog (move mode already checks each kept
+  copy before deleting a duplicate)
 - [ ] Suspect `.mov`/`.mp4` from the real run – inspect headers (needs the owner's OK)
 - [ ] Skip images by pixel size instead of KB (keeps 160×120 early phone photos)
 - [ ] Option: skip installed-software/game folders (`lib`, `res`, game libraries)

@@ -284,7 +284,7 @@ public class CatalogMigrationTests : IDisposable
     public void Dispose() => _tmp.Dispose();
 
     [Fact]
-    public void A_version_1_catalog_is_upgraded_in_place()
+    public void A_version_1_catalog_is_upgraded_in_place_step_by_step()
     {
         var path = _tmp["catalog.db"];
         using (var conn = new SqliteConnection($"Data Source={path};Pooling=False"))
@@ -302,6 +302,8 @@ public class CatalogMigrationTests : IDisposable
                   outcome TEXT, options_json TEXT, stats_json TEXT);
                 INSERT INTO media (sha256, size, kind, format, dest_path, status, first_seen_utc)
                   VALUES ('abc', 1, 'Image', 'Jpeg', 'Extracted\a.jpg', 'Copied', '2026-01-01T00:00:00Z');
+                INSERT INTO sources (media_id, source_path, size, mtime_utc, ctime_utc)
+                  VALUES (1, 'C:\old.jpg', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
                 PRAGMA user_version = 1;
                 """;
             cmd.ExecuteNonQuery();
@@ -310,7 +312,9 @@ public class CatalogMigrationTests : IDisposable
         using (var db = CatalogDb.Open(path))
         {
             var row = Assert.Single(db.LoadCopiedMedia());
-            db.SaveGuess(row.Id, "Sweden", "test", "Album", null);   // would throw if the columns were missing
+            db.SaveGuess(row.Id, "Sweden", "test", "Album", null);   // v2 – would throw if the columns were missing
+            db.MarkSourceRemoved(@"C:\old.jpg", SourceRemoval.Deleted);   // v3
+            Assert.Equal(1, db.CountRemovedSources());
         }
 
         using var check = new SqliteConnection($"Data Source={path};Pooling=False");
@@ -319,6 +323,6 @@ public class CatalogMigrationTests : IDisposable
         q.CommandText = "SELECT guess_place || '/' || album FROM media; ";
         Assert.Equal("Sweden/Album", q.ExecuteScalar());
         q.CommandText = "PRAGMA user_version;";
-        Assert.Equal(2L, q.ExecuteScalar());
+        Assert.Equal(3L, q.ExecuteScalar());
     }
 }

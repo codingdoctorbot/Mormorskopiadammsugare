@@ -14,11 +14,14 @@ namespace PhotoSorter.Core.Extraction;
 /// <summary>
 /// Phase 1 – Extract (ARCHITECTURE §3–4). Producer/consumer pipeline:
 /// enumerator (1 thread) → classify + hash workers (N) → writer (1 thread: de-dup, copy, catalog).
-/// Sources are only ever read.
+/// Sources are only read – except in move mode (§4.9), where originals are removed once safely kept.
 /// </summary>
 public sealed class ExtractionPipeline
 {
     private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Tests: treat every source as being on another drive (copy + check + delete instead of rename).</summary>
+    internal bool NeverRename { get; init; }
 
     public async Task<ExtractionResult> RunAsync(
         ScanOptions options,
@@ -40,8 +43,11 @@ public sealed class ExtractionPipeline
             SourceIndex = db.LoadSourceIndex(),
             ExtractedNames = NameResolver.ForDirectory(layout.Extracted),
             SuspectNames = NameResolver.ForDirectory(layout.Suspect),
+            Guard = options.MoveOriginals ? new SourceGuard(FileEnumerator.NormalizeSources(options.Sources)) : null,
+            NeverRename = NeverRename,
         };
-        var runId = db.StartRun(options.DryRun ? "extract-dryrun" : "extract", JsonSerializer.Serialize(options));
+        var runKind = (options.DryRun ? "extract-dryrun" : "extract") + (options.MoveOriginals ? "-move" : "");
+        var runId = db.StartRun(runKind, JsonSerializer.Serialize(options));
 
         using var stopReporting = new CancellationTokenSource();
         var reporter = ReportProgressAsync(state, progress, stopReporting.Token);
@@ -165,11 +171,13 @@ public sealed class ExtractionPipeline
             return null;
         }
 
-        if (ctx.SourceIndex.TryGetValue(c.Path, out var known) && known.Size == c.Size && known.MtimeUtc == c.LastWriteUtc)
+        var knownSource = ctx.SourceIndex.TryGetValue(c.Path, out var known) && known.Size == c.Size && known.MtimeUtc == c.LastWriteUtc;
+        if (knownSource && !ctx.Options.MoveOriginals)
         {
             Interlocked.Increment(ref s.AlreadyCataloged);
             return null;
         }
+        // Move mode re-reads files copied by earlier runs: their content must be checked before they're removed.
 
         try
         {
@@ -202,7 +210,7 @@ public sealed class ExtractionPipeline
 
             stream.Position = 0;
             var sha = FileHasher.ComputeSha256(stream, n => Interlocked.Add(ref s.BytesHashed, n), ct);
-            return new HashedFile(c, cls, sha);
+            return new HashedFile(c, cls, sha, knownSource);
         }
         catch (OperationCanceledException)
         {
@@ -216,26 +224,55 @@ public sealed class ExtractionPipeline
         }
     }
 
-    /// <summary>Writer (single thread): duplicate check, copy, catalog.</summary>
+    /// <summary>Writer (single thread): duplicate check, copy (or move), catalog.</summary>
     private static void WriteItem(Context ctx, HashedFile item, CancellationToken ct)
     {
-        var (c, cls, sha) = item;
+        var (c, cls, sha, knownSource) = item;
         var s = ctx.State;
+        var suspect = cls.Result == ClassificationResult.Suspect;
         try
         {
+            // Move mode: decided before anything is written, so a "keep" never depends on what happens next.
+            var keepReason = ctx.Guard is null ? null : suspect ? "Not a real photo/video (suspect)" : ctx.Guard.KeepReason(c.Path);
+
             if (ctx.Db.FindByHash(sha) is { } existing)
             {
                 ctx.Db.UpsertSource(existing.Id, c);
-                Interlocked.Increment(ref s.Duplicates);
-                ctx.Log.Write("Duplicate", c.Path, existing.DestPath, sha, c.Size, cls.Format.ToString());
+                if (knownSource)
+                {
+                    Interlocked.Increment(ref s.AlreadyCataloged);
+                }
+                else
+                {
+                    Interlocked.Increment(ref s.Duplicates);
+                    ctx.Log.Write("Duplicate", c.Path, existing.DestPath, sha, c.Size, cls.Format.ToString());
+                }
                 if (!ctx.Options.DryRun) KeepOldestTimestamp(ctx.Layout, existing.DestPath, c);
+
+                if (ctx.Guard is null) return;
+                if (keepReason is null && !ctx.Options.DryRun && !KeptCopyIsIntact(ctx, existing, ct))
+                    keepReason = "The kept copy in the destination is missing or was changed";
+                if (keepReason is not null) KeepInSource(ctx, c, keepReason);
+                else RemoveSource(ctx, c, SourceRemoval.Deleted, existing.DestPath, "Duplicate – the kept copy was checked");
                 return;
             }
 
-            var suspect = cls.Result == ClassificationResult.Suspect;
             var dir = suspect ? ctx.Layout.Suspect : ctx.Layout.Extracted;
             var (name, alreadyThere) = ChooseName(ctx, suspect ? ctx.SuspectNames : ctx.ExtractedNames, dir, c, cls, sha, ct);
             var fullPath = Path.Combine(dir, name);
+            var relative = ctx.Layout.ToRelative(fullPath);
+            var status = suspect ? CatalogStatus.Suspect : CatalogStatus.Copied;
+            var move = ctx.Guard is not null && keepReason is null;
+
+            if (move && !ctx.Options.DryRun && !alreadyThere && ctx.SameDrive(c.Path))
+            {
+                // Same drive: a rename – instant, and the content can't change on the way.
+                RenameIntoDestination(ctx, c, cls, sha, fullPath, relative, status);
+                Interlocked.Increment(ref s.Unique);
+                Interlocked.Increment(ref s.RemovedFromSources);
+                ctx.Log.Write("Moved", c.Path, relative, sha, c.Size, cls.Format.ToString(), "Moved (same drive)");
+                return;
+            }
 
             if (ctx.Options.DryRun)
             {
@@ -245,21 +282,29 @@ public sealed class ExtractionPipeline
             {
                 Directory.CreateDirectory(dir);
                 s.CurrentPath = c.Path;
+                // Move mode always checks the copy: the original is about to be deleted.
                 CopyService.Copy(c.Path, fullPath, c.LastWriteUtc, c.CreationUtc,
-                    ctx.Options.VerifyCopies ? sha : null, n => Interlocked.Add(ref s.BytesCopied, n), ct);
+                    ctx.Options.VerifyCopies || move ? sha : null, n => Interlocked.Add(ref s.BytesCopied, n), ct);
             }
 
-            var relative = ctx.Layout.ToRelative(fullPath);
+            long id;
             using (var tx = ctx.Db.BeginTransaction())
             {
-                var id = ctx.Db.AddMedia(sha, c.Size, cls.Kind, cls.Format, relative,
-                    suspect ? CatalogStatus.Suspect : CatalogStatus.Copied);
+                id = ctx.Db.AddMedia(sha, c.Size, cls.Kind, cls.Format, relative, status);
                 ctx.Db.UpsertSource(id, c);
                 tx.Commit();
             }
             Interlocked.Increment(ref s.Unique);
             ctx.Log.Write(suspect ? "CopiedSuspect" : "Copied", c.Path, relative, sha, c.Size, cls.Format.ToString(),
                 alreadyThere ? "Already in place from an interrupted run" : null);
+
+            if (ctx.Guard is null) return;
+            if (keepReason is not null) KeepInSource(ctx, c, keepReason);
+            else
+            {
+                ctx.VerifiedKept.Add(id); // just checked byte for byte (or matched by hash when already there)
+                RemoveSource(ctx, c, SourceRemoval.Moved, relative, "Copied and checked, original removed");
+            }
         }
         catch (OperationCanceledException)
         {
@@ -274,6 +319,88 @@ public sealed class ExtractionPipeline
             Interlocked.Increment(ref s.Errors);
             ctx.Log.Write("Error", c.Path, sha256: sha, size: c.Size, message: ex.Message);
         }
+    }
+
+    // ---------------- Move mode (§4.9) ----------------
+
+    /// <summary>
+    /// Same-drive move: the catalog rows (incl. "removed") and the rename happen in one transaction. If the rename
+    /// fails nothing is recorded; if recording fails after the rename, the file is renamed back.
+    /// </summary>
+    private static void RenameIntoDestination(
+        Context ctx, FileCandidate c, Classification cls, string sha, string fullPath, string relative, CatalogStatus status)
+    {
+        if (!IsUnchanged(c)) throw new IOException("The file changed while it was being read – it was left where it is.");
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        long id;
+        using (var tx = ctx.Db.BeginTransaction())
+        {
+            id = ctx.Db.AddMedia(sha, c.Size, cls.Kind, cls.Format, relative, status);
+            ctx.Db.UpsertSource(id, c);
+            ctx.Db.MarkSourceRemoved(c.Path, SourceRemoval.Moved);
+            File.Move(c.Path, fullPath);
+            try
+            {
+                tx.Commit();
+            }
+            catch
+            {
+                File.Move(fullPath, c.Path);
+                throw;
+            }
+        }
+        ctx.VerifiedKept.Add(id);
+    }
+
+    /// <summary>Records the removal first, then deletes. If the delete fails the record is taken back.</summary>
+    private static void RemoveSource(Context ctx, FileCandidate c, SourceRemoval how, string? keptRelative, string note)
+    {
+        if (!ctx.Options.DryRun)
+        {
+            if (!IsUnchanged(c))
+            {
+                KeepInSource(ctx, c, "The file changed while it was being read");
+                return;
+            }
+            ctx.Db.MarkSourceRemoved(c.Path, how);
+            try
+            {
+                File.Delete(c.Path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ctx.Db.ClearSourceRemoved(c.Path);
+                KeepInSource(ctx, c, "Could not remove it: " + ex.Message);
+                return;
+            }
+        }
+        Interlocked.Increment(ref ctx.State.RemovedFromSources);
+        ctx.Log.Write(how == SourceRemoval.Moved ? "Moved" : "Removed", c.Path, keptRelative, size: c.Size,
+            message: ctx.Options.DryRun ? "Would be removed from the source (dry run)" : note);
+    }
+
+    private static void KeepInSource(Context ctx, FileCandidate c, string reason)
+    {
+        Interlocked.Increment(ref ctx.State.KeptInSources);
+        ctx.Log.Write("KeptInSource", c.Path, size: c.Size, message: reason);
+    }
+
+    /// <summary>Re-hashes the kept copy once per run before any duplicate of it is deleted.</summary>
+    private static bool KeptCopyIsIntact(Context ctx, MediaRecord kept, CancellationToken ct)
+    {
+        if (ctx.VerifiedKept.Contains(kept.Id)) return true;
+        if (kept.DestPath is null) return false;
+        var full = ctx.Layout.ToFull(kept.DestPath);
+        if (!File.Exists(full) || FileHasher.ComputeSha256(full, ct) != kept.Sha256) return false;
+        ctx.VerifiedKept.Add(kept.Id);
+        return true;
+    }
+
+    /// <summary>Same size and date as when it was read – nobody edited it in between.</summary>
+    private static bool IsUnchanged(FileCandidate c)
+    {
+        var now = new FileInfo(c.Path);
+        return now.Exists && now.Length == c.Size && now.LastWriteTimeUtc == c.LastWriteUtc;
     }
 
     /// <summary>
@@ -367,7 +494,8 @@ public sealed class ExtractionPipeline
         }
     }
 
-    private sealed record HashedFile(FileCandidate Candidate, Classification Classification, string Sha256);
+    /// <param name="KnownSource">Recorded by an earlier run with the same size and date (move mode only).</param>
+    private sealed record HashedFile(FileCandidate Candidate, Classification Classification, string Sha256, bool KnownSource);
 
     private sealed class Context(
         ScanOptions options, DestinationLayout layout, CatalogDb db, CsvRunLog log, ProgressState state, FileEnumerator enumerator)
@@ -381,6 +509,20 @@ public sealed class ExtractionPipeline
         public required Dictionary<string, (long Size, DateTime MtimeUtc)> SourceIndex { get; init; }
         public required NameResolver ExtractedNames { get; init; }
         public required NameResolver SuspectNames { get; init; }
+
+        /// <summary>Move mode only; null when copying.</summary>
+        public SourceGuard? Guard { get; init; }
+
+        public bool NeverRename { get; init; }
+
+        /// <summary>Kept copies already checked in this run (move mode).</summary>
+        public HashSet<long> VerifiedKept { get; } = [];
+
+        private readonly string _destinationDrive = Path.GetPathRoot(layout.Root) ?? "";
+
+        public bool SameDrive(string path) =>
+            !NeverRename && _destinationDrive.Length > 0 &&
+            string.Equals(Path.GetPathRoot(path), _destinationDrive, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Counters shared by all threads; read as a <see cref="ScanProgress"/> snapshot.</summary>
@@ -393,7 +535,7 @@ public sealed class ExtractionPipeline
         public volatile string? Warning;
         public long TotalFiles;
         public long FilesSeen, PhotosFound, VideosFound, Unique, Duplicates, AlreadyCataloged;
-        public long Skipped, Suspects, Errors, BytesCopied, BytesHashed;
+        public long Skipped, Suspects, Errors, BytesCopied, BytesHashed, RemovedFromSources, KeptInSources;
 
         public ScanProgress Snapshot() => new()
         {
@@ -408,6 +550,8 @@ public sealed class ExtractionPipeline
             Skipped = Interlocked.Read(ref Skipped),
             Suspects = Interlocked.Read(ref Suspects),
             Errors = Interlocked.Read(ref Errors),
+            RemovedFromSources = Interlocked.Read(ref RemovedFromSources),
+            KeptInSources = Interlocked.Read(ref KeptInSources),
             BytesCopied = Interlocked.Read(ref BytesCopied),
             BytesHashed = Interlocked.Read(ref BytesHashed),
             CurrentPath = CurrentPath,

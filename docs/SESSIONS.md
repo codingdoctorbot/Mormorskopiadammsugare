@@ -6,7 +6,7 @@ the history behind it. Keep entries short and free of personal details.
 
 ---
 
-## 2026-10-06 · Session 9 – `_Stock & memes`, release v0.1.0
+## 2026-10-06 · Session 9 – `_Stock & memes`, release v0.1.0, move mode
 
 **Done**
 - Finished the `_Stock & memes` option (see session 8 notes) and docs.
@@ -14,11 +14,29 @@ the history behind it. Keep entries short and free of personal details.
   signed build attestation. Verified like a stranger would: downloaded, `gh attestation verify` (exit 0;
   workflow `release.yml@refs/tags/v0.1.0`, commit `21d3983`, GitHub-hosted runner), checksum match, smoke
   test (version `0.1.0+21d3983…`). The owner's desktop now runs the official release build.
+- **Move mode + Restore originals** (ARCHITECTURE §4.9): `SourceGuard` (what must stay), writer step removes
+  originals after the kept copy is checked, catalog schema v3 (`sources.removed_how/removed_utc`, step-by-step
+  upgrades), `Restorer`, UI checkbox (never saved) + confirmation + warning box + restore button. 223 tests.
+  End to end on a 3.1 GB real copy of four pile folders: 0 lost, restore byte/date-identical.
+
+**Decisions**
+- The owner asked for move mode after hearing the risks: redundancy in 40 000 unfindable folders isn't worth
+  much; they will back up the organized collection. So: build it, but make every removal provable (record
+  first, kept copy checked, size/date unchanged) and undoable, and keep anything doubtful (program/game
+  folders, `.dll` nearby, read-only, cloud-synced, suspect) in place – a "keep" only costs a leftover file.
+- Same drive = rename (no SSD writes, content can't change); other drive = copy with forced verification.
+- Restore copies back and never touches the destination – afterwards it's as if the run had copied.
 
 **Lessons**
 - `gh attestation verify` printed nothing visible through the tooling shell – trust the exit code, and use
   `--format json` to see what was verified.
 - A shell's working directory inside a folder keeps Windows from deleting that folder; `cd` out first.
+- `dotnet test --solution` does **not** compile the WPF app (no test references it): a broken string literal
+  in a view model passed all tests. Always also run `dotnet build PhotoSorter.sln`.
+- Python heredocs mangled backslashes again (`\:` in C# time formats, `\n` became real newlines). C# raw
+  string literals (`"""…"""`) in the source avoid escapes altogether.
+- End-to-end checks of destructive features: run them on a **real copy** (not hard links – shared inodes
+  share timestamps, so the test set itself would change) and compare a full before/after snapshot.
 
 ## 2026-10-05 · Session 8 – Best guesses inside the unknown folders
 

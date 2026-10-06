@@ -15,7 +15,8 @@
 A **portable** (no install, runs from a folder) Windows desktop app that:
 1. **Extract:** scans huge piles of nested "backups of backups" (designed for ~300 GB / ~100k files /
    ~30k folders), finds every **photo and video** (any format, also renamed / extension-less ones),
-   de-duplicates by SHA-256 and **copies** each unique file once into a destination folder.
+   de-duplicates by SHA-256 and **copies** each unique file once into a destination folder – or, in the
+   optional **move mode**, moves it and removes the duplicates from the sources (undoable).
 2. **Organize:** moves the extracted copies into **`Continent\Year\`** (EXIF/QuickTime GPS → offline
    continent lookup; capture date → file-name date → folder-name year). Fallback buckets:
    `Continent\_Unknown year\`, `_Unknown location\Year\`, `_Unknown location\_Unknown year\`.
@@ -23,7 +24,7 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 ## Product decisions
 | Topic | Decision |
 |---|---|
-| Copy vs move | **Copy.** Never modify, move or delete source files. |
+| Copy vs move | **Copy by default.** Optional **move mode** (owner's request, 2026-10-06: "it's redundant in 40k folders, non-findable in disarray – I can back up my new organized stack"): off at every start, confirmed per run, removes an original only after its kept copy is checked, never in program/cloud/read-only places, undoable with *Restore originals* (ARCHITECTURE §4.9). Source files are never *modified*. |
 | Layout | **Continent → Year** by default; optional **Continent → Country → Year**, and for Sweden optionally **→ Län →** Year |
 | Unknowns | Stay in `_Unknown location` / `_Unknown year`, but get **best-guess** subfolders (option, on by default): `~Place` from same-time GPS photos, album folders, `_Screenshots`/`_Graphics`/`_Downloads`. Guesses are always marked `~` or `_` and never mixed into trusted folders. |
 | Videos | Included, mixed with photos in the same folders. Audio is not included. |
@@ -54,9 +55,12 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
   Checked on the 10 GB test pile: only meaningful albums ("Rome 2009", "Fjällen 2012"…).
 - ✅ **Stock photos and memes** (by file name) → `…\_Stock & memes\` inside every final folder (option, on by
   default; ARCHITECTURE §5.6). False positives accepted: they stay in the same folder, one level deeper.
-- ✅ 213 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
+- ✅ **Move mode + Restore originals** (ARCHITECTURE §4.9, catalog schema v3). Checked end to end on a 3.1 GB
+  real copy of part of the test pile: 316 originals removed, 0 lost, read-only and program-folder photos
+  kept, restore gave a byte- and date-identical tree, a second move run removed the same 316 again.
+- ✅ 223 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
-  layout switching, best guesses, schema migration, and a guard against double-encoded source files.
+  layout switching, best guesses, move mode and restore, schema migration, and a guard against double-encoded source files.
 - ✅ **Released v0.1.0** on 2026-10-06 (tag `v0.1.0` = commit `21d3983`), after the 2026-10-05 GitHub Actions
   outage cleared. Built by `release.yml` on GitHub; download, `gh attestation verify` and SHA256SUMS all checked
   against the published exe. How to make the next release: `docs/NEXT_SESSION.md` → "Releasing".
@@ -144,7 +148,8 @@ scripts/                   – build.ps1, publish.ps1
 ```
 
 ## Key design rules (don't break these)
-1. **Sources are read-only.** Open with `FileAccess.Read, FileShare.ReadWrite`.
+1. **Sources are never modified.** Open with `FileAccess.Read, FileShare.ReadWrite`. Only move mode removes
+   files, and only by the rules in ARCHITECTURE §4.9: record first, check the kept copy, then delete.
 2. **Exclude the destination** from the scan (it could be inside a source).
 3. Copy via `*.partial` then rename; preserve original timestamps.
 4. Per-file error isolation: log & continue, never abort the run (except disk full).

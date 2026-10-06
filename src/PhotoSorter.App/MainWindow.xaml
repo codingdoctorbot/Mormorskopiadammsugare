@@ -14,7 +14,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
             <TextBlock Text="Mormorskopiadammsugare" FontSize="26" FontWeight="SemiBold" />
             <TextBlock Style="{StaticResource Hint}"
-                       Text="Copies every unique photo and video out of your backups, then sorts them into Continent \ Year folders. Your original files are never changed, moved or deleted." />
+                       Text="Copies every unique photo and video out of your backups, then sorts them into Continent \ Year folders. Your originals are never changed – and only removed if you choose Move instead of copy." />
         </StackPanel>
 
         <TabControl SelectedIndex="{Binding SelectedTabIndex}">
@@ -89,6 +89,21 @@
                                         <ComboBox ItemsSource="{Binding ParallelismChoices}" SelectedItem="{Binding Parallelism}" Width="80" />
                                     </StackPanel>
                                 </WrapPanel>
+                                <CheckBox IsChecked="{Binding MoveOriginals}" Margin="0,8,0,0"
+                                          ToolTip="Unique photos and videos are moved, duplicates deleted from the source folders – each only after its copy in the destination has been checked. Never saved: it's off every time the app starts.">
+                                    <TextBlock><Run Text="Move instead of copy" FontWeight="SemiBold" /><Run Text=" – empties the source folders of photos and videos" /></TextBlock>
+                                </CheckBox>
+                                <Border Visibility="{Binding MoveOriginals, Converter={StaticResource BoolToVisible}}" Margin="28,6,0,0"
+                                        Padding="10,8" CornerRadius="4" BorderThickness="1" BorderBrush="DarkOrange">
+                                    <TextBlock TextWrapping="Wrap" FontSize="12">
+                                        Originals are removed once their copy is checked. Program and game folders, read-only files,
+                                        synced cloud folders (OneDrive…) and suspect files are only copied, never removed.
+                                        <LineBreak />
+                                        <Run FontWeight="SemiBold" Text="Afterwards each photo exists once – back up the destination to a second drive." />
+                                        <LineBreak />
+                                        Changed your mind? "Restore originals" puts every file back where it was.
+                                    </TextBlock>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -98,6 +113,8 @@
                             <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="100" Margin="10,0,0,0" />
                             <Button Content="Open destination" Command="{Binding OpenDestinationCommand}" Margin="10,0,0,0" />
                             <Button Content="Show log" Command="{Binding OpenLogCommand}" Margin="10,0,0,0" />
+                            <Button Content="Restore originals…" Command="{Binding RestoreOriginalsCommand}" Margin="10,0,0,0"
+                                    ToolTip="Undo for move mode: copies every moved or deleted original back to where it was, from the destination." />
                         </StackPanel>
 
                         <ProgressBar Height="8" Margin="0,16,0,0" Value="{Binding ExtractPercent}" IsIndeterminate="{Binding ExtractIndeterminate}" />

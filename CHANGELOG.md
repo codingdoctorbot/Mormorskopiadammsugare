@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Move instead of copy** (off every time the app starts): empties the backups of photos and videos.
+  Unique files are moved (instant on the same drive; copied and checked on another drive), duplicates
+  deleted – each only after the kept copy has been checked. Program and game folders, read-only files,
+  synced cloud folders and suspect files are only copied, never removed. Confirmation before every run.
+- **Restore originals**: puts every moved or deleted file back at its old place, name and date, from the
+  destination (checked against the original). The destination is not changed.
+
+### Changed
+- Catalog schema v3 (upgrades automatically from v1 and v2).
+
 ## [0.1.0] – 2026-10-06 – first public release
 
 ### Added

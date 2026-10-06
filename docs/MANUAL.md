@@ -6,8 +6,9 @@ Mormorskopiadammsugare searches your old backups, finds every photo and video, a
 **once** to a new folder (the *destination*). Then it sorts the copies into folders by continent and
 year, for example `Europe\2015`.
 
-**Your original files are never changed, moved or deleted.** Everything is copied – if something goes
-wrong, your backups are exactly as before.
+**Your original files are never changed.** By default everything is copied – if something goes
+wrong, your backups are exactly as before. Only if you tick **Move instead of copy** are originals
+removed, each one after its copy has been checked, and **Restore originals** puts them back.
 
 It works in two steps, one per tab: **1 Extract** (find and copy every unique photo/video) and
 **2 Organize** (sort the copies into folders).
@@ -26,14 +27,18 @@ It works in two steps, one per tab: **1 Extract** (find and copy every unique ph
 | **Copy suspect files** | Files named like photos (`.jpg`) that contain something else – often a saved web page – go to `Extracted\_suspect` instead of being left out. | To be sure nothing real is missed. |
 | **Organize automatically afterwards** | Starts sorting (tab 2) when extraction finishes. | One click does everything. Leave it off to see the preview first. |
 | **Parallel reads** | How many files are read at the same time. Default 4. | 4 is fast on SSDs. Use **1** for old hard drives (HDD) and USB disks – several at once makes them slower. |
+| **Move instead of copy** | Off every time the app starts (never remembered). Your backups are **emptied** of photos and videos: unique files are moved (instant on the same drive; on another drive copied, checked byte by byte, then deleted), duplicates deleted – but only after the kept copy has been read again and found identical. **Only copied, never removed:** files in program/game folders or next to program files (`.dll`), read-only files, synced cloud folders (OneDrive… – deleting there deletes in the cloud too) and suspect files (log: `KeptInSource`). Other files (documents, music) aren't touched. You confirm before it starts. | One tidy collection instead of a messy pile plus a tidy copy. **Afterwards each photo exists once – back up the destination to a second drive.** Undo with *Restore originals*. |
 
 **Buttons:** *Start* begins. *Cancel* stops safely – press Start again later and it continues where it
 stopped; nothing is copied twice. *Open destination* opens the folder. *Show log* shows everything that
-happened, including errors.
+happened, including errors. *Restore originals…* undoes move mode: every moved or deleted original is
+copied back to its old folder, name and date from the destination (checked against the original); the
+destination itself is not changed.
 
 **Result tiles:** *Photos/Videos found* in your backups · *New copies* made this time · *Duplicates*
 (content already copied – skipped) · *Done earlier* (handled in an earlier run, not even re-read) ·
-*Copied* (data) · *Errors* (turns orange – see the log) · *Time*. The line below lists files left out
+*Copied* (data) · *Errors* (turns orange – see the log) · *Time* · in move mode also *Removed from
+sources* and *Kept in sources*. The line below lists files left out
 as too small or as not real photos.
 
 ## Tab 2 – Organize
@@ -87,6 +92,8 @@ Same photo, several names → one copy, with the best name.
    copied photos are recognised and not copied again.
 5. Until you're completely done, let the program manage the destination (don't move files in it by hand).
 6. When everything is sorted, back up the destination properly – it now holds one copy of each photo and video.
+7. Want the backups emptied too? Run once more with **Move instead of copy** and the same destination:
+   nothing is copied again; the originals are checked against their copies and removed.
 
 ## Limitations
 

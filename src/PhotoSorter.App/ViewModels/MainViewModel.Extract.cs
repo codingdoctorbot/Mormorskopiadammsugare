@@ -30,10 +30,25 @@ public partial class MainViewModel
 
     private bool CanStartExtract() => IsIdle && Sources.Count > 0 && !string.IsNullOrWhiteSpace(Destination);
 
+    /// <summary>The running (or last) extraction is in move mode – shows the "removed/kept" tiles.</summary>
+    private bool _moveRun;
+
     [RelayCommand(CanExecute = nameof(CanStartExtract))]
     private async Task StartExtractAsync()
     {
         SaveSettings();
+        if (MoveOriginals && !DryRun && !Confirm("Move instead of copy?", """
+                Photos and videos will be REMOVED from the source folders once their copy in the destination has been checked: unique files are moved, duplicates deleted.
+
+                Program and game folders, read-only files, synced cloud folders and suspect files are only copied.
+
+                Afterwards each photo exists only once, in the destination – back it up to a second drive.
+                "Restore originals" can put every file back.
+
+                Move the files?
+                """))
+            return;
+
         var options = new ScanOptions
         {
             Sources = [.. Sources],
@@ -46,7 +61,9 @@ public partial class MainViewModel
             DryRun = DryRun,
             CopySuspect = CopySuspect,
             Parallelism = Parallelism,
+            MoveOriginals = MoveOriginals,
         };
+        _moveRun = MoveOriginals;
 
         DiscardPlan("New files were extracted – press Preview again.");
         var ct = BeginWork();
@@ -61,7 +78,7 @@ public partial class MainViewModel
             var result = await Task.Run(() => new ExtractionPipeline().RunAsync(options, progress, ct), CancellationToken.None);
             ShowProgress(result.Progress);
             LastLogPath = result.LogPath;
-            ExtractStatus = Summarize(result, options.DryRun);
+            ExtractStatus = Summarize(result, options.DryRun, options.MoveOriginals);
             organizeNext = result.Outcome == RunOutcome.Completed && OrganizeAfterExtract && !options.DryRun;
         }
         catch (ArgumentException ex)
@@ -105,15 +122,23 @@ public partial class MainViewModel
             new("Errors", N(p.Errors), Alert: p.Errors > 0),
             new("Time", p.Elapsed.ToString(@"hh\:mm\:ss")),
         ];
+        if (_moveRun)
+            Stats =
+            [
+                .. Stats,
+                new(DryRun ? "Would remove" : "Removed from sources", N(p.RemovedFromSources)),
+                new("Kept in sources", N(p.KeptInSources)),
+            ];
         ExtraLine = p.Skipped + p.Suspects == 0 ? "" :
             $"Also left out: {N(p.Skipped)} too small or switched off · {N(p.Suspects)} named like photos but aren't (see the log)";
         CurrentFile = p.CurrentPath ?? "";
         ExtractWarning = p.Warning;
     }
 
-    private static string Summarize(ExtractionResult r, bool dryRun)
+    private static string Summarize(ExtractionResult r, bool dryRun, bool move)
     {
         var p = r.Progress;
+        if (move) return SummarizeMove(r, dryRun);
         var copied = $"{Files(p.Unique).Replace("file", "new file")} ({ByteSize.Format(p.BytesCopied)})";
         var errors = p.Errors > 0 ? $" {Files(p.Errors)} could not be read – see the log." : "";
         return r.Outcome switch
@@ -128,6 +153,85 @@ public partial class MainViewModel
                 $"Cancelled after copying {copied}. Press Start again to continue where it stopped.",
             _ => "Stopped: " + r.ErrorMessage,
         };
+    }
+
+    private static string SummarizeMove(ExtractionResult r, bool dryRun)
+    {
+        var p = r.Progress;
+        var kept = p.KeptInSources > 0 ? $" {Files(p.KeptInSources)} stayed in the sources on purpose (see KeptInSource in the log)." : "";
+        var errors = p.Errors > 0 ? $" {Files(p.Errors)} could not be read – see the log." : "";
+        return r.Outcome switch
+        {
+            RunOutcome.Completed when dryRun =>
+                $"Dry run finished in {p.Elapsed:hh\\:mm\\:ss}: would move {Files(p.Unique).Replace("file", "new file")} and " +
+                $"remove {Files(p.RemovedFromSources)} from the sources in total. Nothing was moved.{kept}{errors}",
+            RunOutcome.Completed =>
+                $"Finished in {p.Elapsed:hh\\:mm\\:ss}: {Files(p.Unique).Replace("file", "new file")} in the destination; " +
+                $"{Files(p.RemovedFromSources)} removed from the sources.{kept}{errors} Back up the destination!",
+            RunOutcome.Cancelled =>
+                $"Cancelled: {Files(p.RemovedFromSources)} removed from the sources so far. Press Start again to continue.",
+            _ => "Stopped: " + r.ErrorMessage,
+        };
+    }
+
+    private bool CanRestoreOriginals() => IsIdle && !string.IsNullOrWhiteSpace(Destination) && Directory.Exists(Destination);
+
+    /// <summary>Undo for move mode: copies every removed original back from the destination.</summary>
+    [RelayCommand(CanExecute = nameof(CanRestoreOriginals))]
+    private async Task RestoreOriginalsAsync()
+    {
+        long count;
+        try { count = Restorer.CountRemoved(Destination); }
+        catch (Exception ex) { ShowError("Can't read the catalog", ex.Message); return; }
+
+        if (count == 0)
+        {
+            ExtractStatus = "Nothing to restore: no originals were moved or deleted from the sources for this destination.";
+            return;
+        }
+        if (!Confirm("Restore originals?", $"""
+                {Files(count)} were removed from the source folders by move mode.
+
+                Each will be copied back to its old place and name, with its old dates, from the copy in the destination. The destination itself is not changed.
+
+                Restore them?
+                """))
+            return;
+
+        var ct = BeginWork();
+        Stats = [];
+        ExtraLine = CurrentFile = "";
+        ExtractWarning = null;
+        ExtractPercent = 0;
+        var progress = new Progress<RestoreProgress>(p =>
+        {
+            ExtractPercent = p.Total > 0 ? 100.0 * p.Done / p.Total : 0;
+            ExtractStatus = $"Restoring… {N(p.Done)} of {N(p.Total)}";
+            CurrentFile = p.CurrentPath ?? "";
+        });
+        try
+        {
+            var r = await Restorer.RestoreAsync(Destination, progress, ct);
+            LastLogPath = r.LogPath;
+            CurrentFile = "";
+            var problems = r.Failed > 0 ? $" {Files(r.Failed)} could not be restored – see the log; press Restore again to retry." : "";
+            var there = r.AlreadyThere > 0 ? $" {Files(r.AlreadyThere)} were already back in place." : "";
+            ExtractStatus = r.Outcome switch
+            {
+                RunOutcome.Completed => $"Restored {Files(r.Restored)} to their original folders in {r.Elapsed:hh\\:mm\\:ss}.{there}{problems}",
+                RunOutcome.Cancelled => $"Cancelled after restoring {Files(r.Restored)}. Press Restore again to continue.",
+                _ => "Restore stopped: " + r.ErrorMessage,
+            };
+        }
+        catch (Exception ex)
+        {
+            ExtractStatus = "Restore stopped: " + ex.Message;
+            ShowError("Restore stopped", ex.Message);
+        }
+        finally
+        {
+            EndWork();
+        }
     }
 
     private bool CanOpenLog() => LastLogPath is not null && File.Exists(LastLogPath);

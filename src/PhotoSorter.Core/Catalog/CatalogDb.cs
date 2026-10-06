@@ -23,6 +23,19 @@ public sealed record MediaRow(
 
 public sealed record SourceRow(long MediaId, string Path, DateTime MtimeUtc);
 
+/// <summary>How move mode removed a source file.</summary>
+public enum SourceRemoval
+{
+    /// <summary>The file itself became the kept copy (moved or copied, then removed).</summary>
+    Moved,
+
+    /// <summary>A duplicate, deleted after the kept copy was checked.</summary>
+    Deleted,
+}
+
+public sealed record RemovedSource(
+    string Path, long Size, DateTime MtimeUtc, DateTime CreationUtc, SourceRemoval How, string Sha256, string? DestPath);
+
 public enum CatalogStatus
 {
     Copied,
@@ -35,7 +48,7 @@ public enum CatalogStatus
 /// </summary>
 public sealed class CatalogDb : IDisposable
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
 
     private readonly SqliteConnection _conn;
 
@@ -94,15 +107,27 @@ public sealed class CatalogDb : IDisposable
             throw new InvalidOperationException(
                 $"catalog.db was created by a newer PhotoSorter (schema {version}). Please update the app.");
         if (version == SchemaVersion) return;
-        if (version == 1)
+        if (version > 0)
         {
-            // v2: best-guess sorting inside the unknown folders records what it guessed and why.
-            Execute("""
-                ALTER TABLE media ADD COLUMN guess_place  TEXT;
-                ALTER TABLE media ADD COLUMN guess_reason TEXT;
-                ALTER TABLE media ADD COLUMN album        TEXT;
-                ALTER TABLE media ADD COLUMN category     TEXT;
-                """);
+            // Upgrade step by step from whatever version the catalog has.
+            if (version < 2)
+            {
+                // v2: best-guess sorting inside the unknown folders records what it guessed and why.
+                Execute("""
+                    ALTER TABLE media ADD COLUMN guess_place  TEXT;
+                    ALTER TABLE media ADD COLUMN guess_reason TEXT;
+                    ALTER TABLE media ADD COLUMN album        TEXT;
+                    ALTER TABLE media ADD COLUMN category     TEXT;
+                    """);
+            }
+            if (version < 3)
+            {
+                // v3: move mode records which source files it removed, so "Restore originals" can put them back.
+                Execute("""
+                    ALTER TABLE sources ADD COLUMN removed_how TEXT;
+                    ALTER TABLE sources ADD COLUMN removed_utc TEXT;
+                    """);
+            }
             Execute($"PRAGMA user_version = {SchemaVersion};");
             return;
         }
@@ -139,7 +164,9 @@ public sealed class CatalogDb : IDisposable
               source_path TEXT NOT NULL UNIQUE COLLATE NOCASE,
               size        INTEGER NOT NULL,
               mtime_utc   TEXT NOT NULL,
-              ctime_utc   TEXT NOT NULL
+              ctime_utc   TEXT NOT NULL,
+              removed_how TEXT,
+              removed_utc TEXT
             );
             CREATE INDEX IF NOT EXISTS ix_sources_media ON sources(media_id);
             CREATE TABLE IF NOT EXISTS runs (
@@ -194,11 +221,52 @@ public sealed class CatalogDb : IDisposable
             VALUES ($media, $path, $size, $mtime, $ctime)
             ON CONFLICT(source_path) DO UPDATE SET
               media_id = excluded.media_id, size = excluded.size,
-              mtime_utc = excluded.mtime_utc, ctime_utc = excluded.ctime_utc;
+              mtime_utc = excluded.mtime_utc, ctime_utc = excluded.ctime_utc,
+              removed_how = NULL, removed_utc = NULL;
             """,
             ("$media", mediaId), ("$path", source.Path), ("$size", source.Size),
             ("$mtime", FormatUtc(source.LastWriteUtc)), ("$ctime", FormatUtc(source.CreationUtc)));
         cmd.ExecuteNonQuery();
+    }
+
+    // ---------- Move mode ----------
+
+    /// <summary>Records that move mode removed this source file – written <b>before</b> the file is touched.</summary>
+    public void MarkSourceRemoved(string sourcePath, SourceRemoval how)
+    {
+        using var cmd = Command(
+            "UPDATE sources SET removed_how = $how, removed_utc = $now WHERE source_path = $path;",
+            ("$how", how.ToString()), ("$now", FormatUtc(DateTime.UtcNow)), ("$path", sourcePath));
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>The source is (back) in place: removing it failed, or it was restored.</summary>
+    public void ClearSourceRemoved(string sourcePath)
+    {
+        using var cmd = Command(
+            "UPDATE sources SET removed_how = NULL, removed_utc = NULL WHERE source_path = $path;", ("$path", sourcePath));
+        cmd.ExecuteNonQuery();
+    }
+
+    public long CountRemovedSources() => Convert.ToInt64(
+        Scalar("SELECT COUNT(*) FROM sources WHERE removed_how IS NOT NULL;"), CultureInfo.InvariantCulture);
+
+    /// <summary>Every source file move mode removed, with the kept copy that holds its content.</summary>
+    public List<RemovedSource> LoadRemovedSources()
+    {
+        var list = new List<RemovedSource>();
+        using var cmd = Command("""
+            SELECT s.source_path, s.size, s.mtime_utc, s.ctime_utc, s.removed_how, m.sha256, m.dest_path
+            FROM sources s JOIN media m ON m.id = s.media_id
+            WHERE s.removed_how IS NOT NULL
+            ORDER BY s.source_path;
+            """);
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            list.Add(new RemovedSource(r.GetString(0), r.GetInt64(1), ParseUtc(r.GetString(2)), ParseUtc(r.GetString(3)),
+                Enum.TryParse<SourceRemoval>(r.GetString(4), out var how) ? how : SourceRemoval.Deleted,
+                r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6)));
+        return list;
     }
 
     public long StartRun(string kind, string optionsJson)

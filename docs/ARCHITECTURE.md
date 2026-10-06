@@ -209,8 +209,8 @@ extension (don't rename `.nef` → `.tif`). Same for ISO-BMFF video: keep
 - Preserve `LastWriteTimeUtc` and `CreationTimeUtc` from the source (oldest
   source copy wins if duplicates disagree — older = more likely original).
 - Optional verify: re-hash destination file.
-- Never write to, move, or delete anything in sources. Open sources with
-  `FileAccess.Read, FileShare.ReadWrite`.
+- Never write to, move, or delete anything in sources (except in **move mode**, §4.9, which the user
+  turns on per run). Open sources with `FileAccess.Read, FileShare.ReadWrite`.
 - Pre-flight: check destination free space ≥ estimated image bytes (after scan
   estimate) — warn, don't block.
 
@@ -242,7 +242,9 @@ CREATE TABLE sources (
   source_path TEXT NOT NULL UNIQUE,
   size INTEGER NOT NULL,
   mtime_utc TEXT NOT NULL,
-  ctime_utc TEXT NOT NULL
+  ctime_utc TEXT NOT NULL,
+  removed_how TEXT,                     -- move mode (v3): Moved | Deleted; NULL = still in place
+  removed_utc TEXT
 );
 CREATE TABLE runs (id INTEGER PRIMARY KEY, started_utc TEXT, finished_utc TEXT,
                    options_json TEXT, stats_json TEXT);
@@ -259,12 +261,45 @@ Use WAL mode, `synchronous=NORMAL`; each new file = one small transaction (media
 ### 4.7 Run log
 `<Dest>\_Mormorskopiadammsugare\logs\run-YYYYMMDD-HHMMSS.csv`
 Columns: `timestamp,action,source_path,dest_path,sha256,size,format,message`
-Actions: `Copied, CopiedSuspect, Duplicate, Skipped, Suspect, Error, Cancelled` (extract) and `Moved, Error` (organize, `organize-*.csv`).
+Actions: `Copied, CopiedSuspect, Duplicate, Skipped, Suspect, Error, Cancelled` (extract); in move mode also
+`Moved, Removed, KeptInSource`; `Moved, Error` (organize, `organize-*.csv`); `Restored, AlreadyThere, Error`
+(`restore-*.csv`).
 
 ### 4.8 Errors
 Per-file try/catch → log + continue. Never abort the run for one file.
 Typical: `UnauthorizedAccessException`, `IOException` (locked/bad sector),
 `PathTooLongException` (shouldn't happen: modern .NET handles long paths itself, and the manifest is `longPathAware`).
+
+### 4.9 Move mode (option, off at every start, never saved)
+The user asked for it: a tidy collection they back up beats 40 000 messy folders nobody can search. The
+copy pipeline stays the same; only the writer adds "remove the original" after a file is safely kept.
+
+| File | What happens |
+|---|---|
+| New, same drive | One transaction: media + source rows marked `Moved`, `File.Move` (rename – instant, content can't change). Rename fails → nothing recorded. Commit fails → renamed back. |
+| New, other drive | Copy with **forced** verification (SHA-256 of the copy = source hash), record, then mark `Moved` and delete. |
+| Duplicate | The kept copy is **re-hashed** (once per run) against the catalog; only if identical is the source marked `Deleted` and deleted. Missing/edited kept copy → the source stays. |
+| Copied by an earlier run | Move mode skips the size+date shortcut and re-hashes the source, so earlier copy-mode runs can be "converted" (same checks as a duplicate). |
+
+Rules (`Extraction/SourceGuard.cs`) – the file is copied but **kept** in the source (`KeptInSource` + reason):
+read-only/system files; reparse points and offline files (cloud placeholders), files under the OneDrive
+folders Windows knows (`%OneDrive%`, `%OneDriveConsumer%`, `%OneDriveCommercial%`) and on a Google Drive
+volume – deleting there deletes in the cloud; program/game folders by name (`Program Files`, `steamapps`,
+`Steam`, `Epic Games`, `lib`, `res`, `assets`, `textures`…) below the source folder; a `.dll` in the file's
+folder or up to 3 levels up (within the source folder); suspect files. Old backup copies merely *named*
+OneDrive are treated as normal folders. Before every removal the source must still have the size and date it
+had when it was read.
+
+**Order of writes:** the catalog records the removal **before** the file is touched; if the delete fails the
+mark is cleared. So after a crash the catalog may claim a removal that didn't happen (harmless: restore finds
+the file in place), never the reverse.
+
+**Restore originals** (`Extraction/Restorer.cs`): for every source marked removed, copy the kept file (wherever
+Organize put it – `dest_path`) back to the old path via `.partial`, verify against the original SHA-256,
+restore mtime/ctime, clear the mark. Never changes the destination; a file already at the old path is left
+alone. Failures stay marked and can be retried.
+
+Not done (yet): removing folders left empty in the sources.
 
 ---
 

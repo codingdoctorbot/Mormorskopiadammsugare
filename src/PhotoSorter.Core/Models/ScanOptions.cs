@@ -24,6 +24,13 @@ public sealed record ScanOptions
     /// <summary>Copy files whose extension says photo/video but whose content doesn't match to Extracted\_suspect.</summary>
     public bool CopySuspect { get; init; }
 
+    /// <summary>
+    /// Move mode (§4.9): originals leave the source folders once their content is safely in the destination –
+    /// unique files are moved (renamed on the same drive, copied + checked otherwise), duplicates deleted after
+    /// the kept copy is checked. Every removal is recorded first, so "Restore originals" can undo it.
+    /// </summary>
+    public bool MoveOriginals { get; init; }
+
     /// <summary>Parallel file readers. 4 suits SSDs; use 1 for HDD/USB sources.</summary>
     public int Parallelism { get; init; } = 4;
 

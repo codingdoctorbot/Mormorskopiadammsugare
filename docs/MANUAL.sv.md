@@ -6,8 +6,9 @@ Mormorskopiadammsugare letar igenom dina gamla säkerhetskopior, hittar alla fot
 kopierar varje bild **en gång** till en ny mapp (*destinationen*). Sedan sorterar det kopiorna i mappar
 efter världsdel och år, till exempel `Europe\2015`.
 
-**Dina originalfiler ändras, flyttas eller raderas aldrig.** Allt kopieras – om något går fel är dina
-säkerhetskopior exakt som förut.
+**Dina originalfiler ändras aldrig.** Från början kopieras allt – om något går fel är dina
+säkerhetskopior exakt som förut. Bara om du kryssar i **Move instead of copy** tas originalen bort,
+vart och ett först när kopian har kontrollerats, och **Restore originals** lägger tillbaka dem.
 
 Det sker i två steg, en flik per steg: **1 Extract** (hitta och kopiera alla unika foton/videor) och
 **2 Organize** (sortera kopiorna i mappar).
@@ -26,15 +27,19 @@ Det sker i två steg, en flik per steg: **1 Extract** (hitta och kopiera alla un
 | **Copy suspect files** (kopiera misstänkta filer) | Filer som heter som bilder (`.jpg`) men innehåller något annat – ofta en sparad webbsida – hamnar i `Extracted\_suspect` i stället för att hoppas över. | För att vara säker på att inget riktigt missas. |
 | **Organize automatically afterwards** (sortera automatiskt efteråt) | Startar sorteringen (flik 2) när uthämtningen är klar. | Ett klick gör allt. Låt det vara av om du vill se förhandsvisningen först. |
 | **Parallel reads** (antal filer samtidigt) | Hur många filer som läses på samma gång. Normalt 4. | 4 är snabbt på SSD. Välj **1** för gamla hårddiskar (HDD) och USB-diskar – flera samtidigt gör dem långsammare. |
+| **Move instead of copy** (flytta i stället för att kopiera) | Av varje gång programmet startar (sparas aldrig). Dina säkerhetskopior **töms** på foton och videor: unika filer flyttas (direkt på samma disk; på en annan disk kopieras de, kontrolleras byte för byte och raderas sedan), dubbletter raderas – men först när den sparade kopian har lästs igen och visat sig identisk. **Kopieras bara, tas aldrig bort:** filer i program-/spelmappar eller bredvid programfiler (`.dll`), skrivskyddade filer, synkade molnmappar (OneDrive… – att radera där raderar i molnet också) och misstänkta filer (loggen: `KeptInSource`). Andra filer (dokument, musik) rörs inte. Du bekräftar innan det börjar. | En prydlig samling i stället för en rörig hög plus en prydlig kopia. **Efteråt finns varje foto en gång – säkerhetskopiera destinationen till en andra disk.** Ångra med *Restore originals*. |
 
 **Knappar:** *Start* sätter igång. *Cancel* avbryter säkert – tryck Start igen senare så fortsätter den
 där den slutade; inget kopieras två gånger. *Open destination* öppnar mappen. *Show log* visar allt som
-hänt, inklusive fel.
+hänt, inklusive fel. *Restore originals…* ångrar flyttläget: varje flyttat eller raderat original kopieras
+tillbaka till sin gamla mapp, sitt namn och datum från destinationen (kontrollerat mot originalet);
+själva destinationen ändras inte.
 
 **Resultatrutorna:** *Photos/Videos found* (hittade i säkerhetskopiorna) · *New copies* (nya kopior den
 här gången) · *Duplicates* (dubbletter – innehållet redan kopierat, hoppas över) · *Done earlier* (klart
 i en tidigare körning, läses inte ens om) · *Copied* (kopierad data) · *Errors* (fel – blir orange, se
-loggen) · *Time* (tid). Raden under listar filer som var för små eller inte riktiga bilder.
+loggen) · *Time* (tid) · vid flytt även *Removed from sources* (borttagna ur källorna) och *Kept in sources*
+(lämnade kvar). Raden under listar filer som var för små eller inte riktiga bilder.
 
 ## Flik 2 – Organize (sortera)
 
@@ -88,6 +93,8 @@ Samma bild, flera namn → en kopia, med det bästa namnet.
 5. Tills du är helt klar: låt programmet sköta destinationen (flytta inte runt filer i den för hand).
 6. När allt är sorterat: säkerhetskopiera destinationen ordentligt – den innehåller nu en kopia av varje
    foto och video.
+7. Vill du tömma säkerhetskopiorna också? Kör en gång till med **Move instead of copy** och samma
+   destination: inget kopieras igen; originalen kontrolleras mot sina kopior och tas bort.
 
 ## Begränsningar
 

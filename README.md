@@ -7,7 +7,8 @@
 Sucks every photo and video out of a pile of **backups of backups**, keeps exactly **one of each**,
 and sorts them into **`Continent\Year\`** folders. A portable Windows app – no installation, one exe.
 
-**Your original files are never changed, moved or deleted.** Everything is copied.
+**Your original files are never changed.** By default everything is copied; the optional **move** mode
+removes originals only after checking each copy – and can be undone.
 
 📖 **[Manual](docs/MANUAL.md)** · **[Bruksanvisning på svenska](docs/MANUAL.sv.md)** · [What's new](CHANGELOG.md)
 
@@ -45,6 +46,8 @@ Also good to know:
   graphics and downloads in folders of their own. Guesses are marked with `~` and can be switched off.
 - **Stock photos and memes** (recognised by file name) go one level deeper in their own folder:
   `Europe\Sweden\Skåne län\2016\_Stock & memes\` – out of the way, but right there to check.
+- **Move instead of copy** (optional): empties the backups once each photo is safely in the new collection –
+  never touching program folders, cloud folders or read-only files – and **Restore originals** undoes it.
 - **Interrupted?** Press Start again – files already done are skipped, so it simply continues.
 - **Skipped on purpose:** tiny thumbnails, app caches (`AppData`, browser caches), `Windows\`,
   macOS `._` files, `Thumbs.db`, and files that are named like photos but aren't (logged as *suspect*).

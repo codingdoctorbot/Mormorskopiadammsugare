@@ -1,27 +1,24 @@
 # Next session – agenda
 
-*Written at the end of session 8 (2026-10-05). Rewrite this file at the end of every session.*
+*Written at the end of session 9 (2026-10-06). Rewrite this file at the end of every session.*
 
 Read [HANDOFF.md](../HANDOFF.md) first. Then work through this list top to bottom; ask the owner about the
 open questions before starting the optional work.
 
-## 1. Publish release v0.1.0 (blocked last time by a GitHub outage)
+## 1. v0.1.0 is out – collect feedback
 
-```powershell
-# is GitHub Actions healthy again?  (expect "operational")
-curl -s https://www.githubstatus.com/api/v2/components.json   # look at "Actions"
-gh run list --limit 3                                          # latest build on main
-gh run rerun <id of the latest build>                          # if it failed with "not acquired by Runner"
-gh run watch <id> --exit-status                                # must end green
-git tag v0.1.0
-git push origin v0.1.0                                         # triggers .github/workflows/release.yml
-gh run watch <release run id> --exit-status
-gh release download v0.1.0 -D $env:TEMP\rel                    # then verify:
-gh attestation verify $env:TEMP\rel\Mormorskopiadammsugare.exe --repo codingdoctorbot/Mormorskopiadammsugare
-Get-FileHash $env:TEMP\rel\Mormorskopiadammsugare.exe          # compare with SHA256SUMS.txt
-```
+Released 2026-10-06 (verified). Ask the owner how the best guesses and `_Stock & memes` look on their real
+pile (Preview → status line counts) before building more.
 
-Then: move CHANGELOG *Unreleased* items (if any) under a new version, and update HANDOFF.
+### Releasing (for the next version)
+1. Move CHANGELOG *Unreleased* items under `## [x.y.z] – <date>`; write `docs/releases/vx.y.z.md`; bump
+   `<Version>` in `Directory.Build.props`.
+2. Commit, push, wait for a green `build` run (`gh run watch <id> --exit-status`). If GitHub Actions is down
+   (githubstatus.com → Actions), wait – never build releases locally.
+3. `git tag -a vx.y.z -m "Mormorskopiadammsugare vx.y.z"` → `git push origin vx.y.z` → watch `release.yml`.
+4. Verify like a stranger: `gh release download vx.y.z`, `gh attestation verify <exe> --repo
+   codingdoctorbot/Mormorskopiadammsugare` (exit code 0; `--format json` shows the details; the plain output
+   may not be visible in some shells), `Get-FileHash` vs `SHA256SUMS.txt`, start it once.
 
 ## 2. Open questions for the owner
 

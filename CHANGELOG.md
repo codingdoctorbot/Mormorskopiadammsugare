@@ -5,7 +5,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.0] – first public release
+## [0.1.0] – 2026-10-06 – first public release
 
 ### Added
 - **Extract:** finds every photo and video in nested backups by content – also renamed, extension-less,

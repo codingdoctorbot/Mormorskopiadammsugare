@@ -6,6 +6,20 @@ the history behind it. Keep entries short and free of personal details.
 
 ---
 
+## 2026-10-06 · Session 9 – `_Stock & memes`, release v0.1.0
+
+**Done**
+- Finished the `_Stock & memes` option (see session 8 notes) and docs.
+- GitHub Actions was healthy again: CI green, tagged **v0.1.0**, `release.yml` built and published the exe with a
+  signed build attestation. Verified like a stranger would: downloaded, `gh attestation verify` (exit 0;
+  workflow `release.yml@refs/tags/v0.1.0`, commit `21d3983`, GitHub-hosted runner), checksum match, smoke
+  test (version `0.1.0+21d3983…`). The owner's desktop now runs the official release build.
+
+**Lessons**
+- `gh attestation verify` printed nothing visible through the tooling shell – trust the exit code, and use
+  `--format json` to see what was verified.
+- A shell's working directory inside a folder keeps Windows from deleting that folder; `cd` out first.
+
 ## 2026-10-05 · Session 8 – Best guesses inside the unknown folders
 
 **Done**

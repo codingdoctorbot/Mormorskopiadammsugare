@@ -57,9 +57,9 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
 - ✅ 213 tests: format detection, pipeline (dupes, resume, dry run, crash recovery, cancel,
   destination inside source), EXIF/ISO 6709 parsing, date rules, continent/country/län lookups, organizer incl.
   layout switching, best guesses, schema migration, and a guard against double-encoded source files.
-- ⏳ **Release v0.1.0 not tagged yet** – blocked by a GitHub Actions outage on 2026-10-05 (hosted runners
-  not assigned; every build since the public repo was created failed with "job was not acquired by Runner",
-  incl. two re-runs). Code is not the cause: all tests pass locally. Steps: `docs/NEXT_SESSION.md` → 1.
+- ✅ **Released v0.1.0** on 2026-10-06 (tag `v0.1.0` = commit `21d3983`), after the 2026-10-05 GitHub Actions
+  outage cleared. Built by `release.yml` on GitHub; download, `gh attestation verify` and SHA256SUMS all checked
+  against the published exe. How to make the next release: `docs/NEXT_SESSION.md` → "Releasing".
 - ✅ **First real-world run** (owner's own backups, aggregate numbers only): ~100 GB / 52,078 unique
   photos+videos copied in under 8 min, 9,459 duplicates skipped, 46,874 files organized in 44 s,
   **0 errors** in both logs. Findings → `docs/NEXT_SESSION.md` → 2–3:

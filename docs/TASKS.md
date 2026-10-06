@@ -56,7 +56,7 @@ App (`src/PhotoSorter.App`):
 - [x] Best name among copies when organizing (`Nokia 6.1.mp4` beats `FILE0043.mp4`, `(1)`/`- Copy`/`kopia` lose) – `NameResolver.PreferredBaseName`
 - [ ] Progress by bytes rather than file count (big videos make the bar uneven)
 - [x] First real-world run (owner's backups, ~100 GB): 0 errors; findings in HANDOFF
-- [ ] **Release v0.1.0** – tag once GitHub Actions builds again (NEXT_SESSION.md → 1)
+- [x] **Release v0.1.0** – published 2026-10-06 with a verified build attestation
 - [ ] **Check all copies** – re-hash the destination against the catalog (before deleting originals)
 - [ ] Suspect `.mov`/`.mp4` from the real run – inspect headers (needs the owner's OK)
 - [ ] Skip images by pixel size instead of KB (keeps 160×120 early phone photos)

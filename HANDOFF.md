@@ -63,7 +63,8 @@ A **portable** (no install, runs from a folder) Windows desktop app that:
   layout switching, best guesses, move mode and restore, schema migration, and a guard against double-encoded source files.
 - ✅ **Released v0.1.0** on 2026-10-06 (tag `v0.1.0` = commit `21d3983`), after the 2026-10-05 GitHub Actions
   outage cleared. Built by `release.yml` on GitHub; download, `gh attestation verify` and SHA256SUMS all checked
-  against the published exe. How to make the next release: `docs/NEXT_SESSION.md` → "Releasing".
+  against the published exe. **v0.2.0** (move mode + Restore originals) released the same way on 2026-10-06,
+  tag `v0.2.0` = commit `1a28d92`, verified. How to make the next release: `docs/NEXT_SESSION.md` → "Releasing".
 - ✅ **First real-world run** (owner's own backups, aggregate numbers only): ~100 GB / 52,078 unique
   photos+videos copied in under 8 min, 9,459 duplicates skipped, 46,874 files organized in 44 s,
   **0 errors** in both logs. Findings → `docs/NEXT_SESSION.md` → 2–3:

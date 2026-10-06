@@ -5,10 +5,9 @@
 Read [HANDOFF.md](../HANDOFF.md) first. Then work through this list top to bottom; ask the owner about the
 open questions before starting the optional work.
 
-## 1. Move mode is built but unreleased – release v0.2.0?
+## 1. v0.2.0 is out – collect feedback
 
-Move mode + Restore originals are on `main` (CHANGELOG *Unreleased*); the owner's desktop has a local build.
-Ask whether to release it as **v0.2.0** (steps below). Then collect feedback: how did move mode go on the real
+Released 2026-10-06 (verified); the owner's desktop runs the official build. Ask how move mode went on the real
 pile (KeptInSource reasons in the log – any surprising ones?), and how do the best guesses and
 `_Stock & memes` look (Preview → status line counts)?
 

@@ -57,7 +57,7 @@ App (`src/PhotoSorter.App`):
 - [ ] Progress by bytes rather than file count (big videos make the bar uneven)
 - [x] First real-world run (owner's backups, ~100 GB): 0 errors; findings in HANDOFF
 - [x] **Release v0.1.0** – published 2026-10-06 with a verified build attestation
-- [x] **Move mode + Restore originals** – ARCHITECTURE §4.9 (2026-10-06)
+- [x] **Move mode + Restore originals** – ARCHITECTURE §4.9, released in v0.2.0 (2026-10-06)
 - [ ] Move mode: remove folders left empty in the sources (only folders that held nothing but moved files)
 - [ ] **Check all copies** – re-hash the destination against the catalog (move mode already checks each kept
   copy before deleting a duplicate)

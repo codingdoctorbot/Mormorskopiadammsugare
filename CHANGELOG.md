@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] – 2026-10-06
+
 ### Added
 - **Move instead of copy** (off every time the app starts): empties the backups of photos and videos.
   Unique files are moved (instant on the same drive; copied and checked on another drive), duplicates
